@@ -1,0 +1,19 @@
+version: "3.8"
+
+
+services:
+  front:
+    container_name: grenzeit_front
+    command: "npm run start"
+    build:
+      context: .
+    ports:
+      - "8090:3000"
+    networks:
+      - grenzeit_network
+
+
+networks:
+  grenzeit_network:
+    name: grenzeit_network
+    external: true
