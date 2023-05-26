@@ -4,14 +4,14 @@ version: "3.8"
 services:
   front:
     container_name: grenzeit_front
-    command: "npm run start"
     build:
       context: .
     ports:
       - "8090:3000"
     networks:
       - grenzeit_network
-
+    volumes:
+      - .:/app:rw
 
 networks:
   grenzeit_network:
