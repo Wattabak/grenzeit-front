@@ -4,6 +4,7 @@ version: "3.8"
 services:
   front:
     container_name: grenzeit_front
+    env_file: ".env.local"
     build:
       context: .
     ports:

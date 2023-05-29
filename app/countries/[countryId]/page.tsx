@@ -1,22 +1,37 @@
 import React from 'react'
 import { Country } from '@/utils/types';
 
-const apiUrl = "http://0.0.0.0:8001/api/latest/countries/"
-
-
-export default async function country({ params }: { params: { countryId: string } }) {
-  let url = apiUrl+params.countryId
-  const res = await fetch(url, { cache: 'no-store' });
-  console.log(url)
-  if (res.status != 200){
-    return <h1>No country with id {params.countryId}</h1>
-}
-  try {
-    const result: Country = await res.json()
-    console.log(result)
-    return result;
-  } catch (error) {
-    console.log("error occurred")
-    throw error
+interface CountryProps {
+  params: {
+    countryId: string
   }
 }
+const apiHost = `${process.env.NEXT_PUBLIC_GRENZEIT_API_SCHEME}://${process.env.NEXT_PUBLIC_GRENZEIT_API_HOST}/api/latest/`
+
+async function getCountry(id: string) {
+  const res = await fetch(`${apiHost}countries/${id}`, { cache: 'no-store' });
+  if (!res.ok) {
+      // This will activate the closest `error.js` Error Boundary
+      throw new Error(`Failed to fetch country ${id}`);
+  }
+  return res.json()
+}
+
+const country = async ({ params }: CountryProps) => {
+  const result: Country = await getCountry(params.countryId)
+  console.log(result)
+  return (
+    <div>
+      <h1>{result.name_eng}</h1>
+      <ul>
+        {
+          Object.entries(result).map(([k, value]) => {
+            return <li key={k}>{k}: {value}</li>
+          })
+        }
+      </ul>
+    </div>
+  );
+}
+
+export default country;

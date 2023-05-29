@@ -1,41 +1,67 @@
-import React from 'react'
-import { Country } from '@/utils/types';
+"use client";
 
-const apiUrl = "http://0.0.0.0:8001/api/latest/countries/"
+import React from "react";
+import { Country, PaginatedResponse } from "@/utils/types";
+import useSWR from "swr";
+import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import { useRouter } from "next/navigation";
 
-
-interface PaginatedResponse {
-    items: Object[];
-    total: number;
-    page: number;
-    size: number;
-    pages: number;
+interface CountryListResponse extends PaginatedResponse {
+  items: Country[];
 }
 
-interface CountryListResponse {
-    items: Country[];
-    total: number;
-    page: number;
-    size: number;
-    pages: number;
+const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
+
+function useCountries() {
+  const { data, error, isLoading } = useSWR<CountryListResponse, Error>(
+    "/api/grenzeit/countries",
+    fetcher
+  );
+
+  return {
+    countries: data,
+    error,
+    isLoading,
+  };
 }
 
+interface CountryListProps {
+  params: {
+    countryId: string;
+  };
+}
 
-export default async function countries({ params }: { params: { countryId: string } }) {
-    const res = await fetch(apiUrl, { cache: 'no-store' });
+export default function Page({ params }: CountryListProps) {
+  const { countries, error, isLoading } = useCountries();
+  const router = useRouter();
 
-    try {
-        const result: CountryListResponse = await res.json()
-        return (
-            <>
-            <h1>Countries list</h1>
-            <div>Total: {result.total}</div>
-            <div>Current page: {result.page}</div>
-            <div>{result.items[0].name_eng}</div>
-            </>
-        );
-    } catch (error) {
-        console.log(error)
-        throw error;
-    }
+  if (error) {
+    // This will activate the closest `error.js` Error Boundary
+    throw new Error("Failed to fetch data on countries");
+  }
+  if (isLoading) return <div>Loading ...</div>;
+
+  if (!countries) return <div>Huh</div>;
+
+  const columns: GridColDef[] = [
+    { field: "uid", headerName: "uid" },
+    { field: "name_eng", headerName: "name_eng" },
+    { field: "founded_at", headerName: "founded_at" },
+    { field: "dissolved_at", headerName: "dissolved_at" },
+    { field: "name_zeit", headerName: "name_zeit" },
+  ];
+
+  const rows: GridRowsProp = countries.items.map((item) => {
+    return {
+      id: item.uid,
+      ...item,
+    };
+  });
+
+  return (
+    <>
+      <h1 className="text-3xl font-bold">Countries list</h1>
+      <DataGrid columns={columns} rows={rows} onRowClick={(item)=>{router.push(`countries/${item.id}`)}}></DataGrid>
+    </>
+  );
 }

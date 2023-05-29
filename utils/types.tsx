@@ -6,6 +6,11 @@ export type Country = {
     name_eng: string;
 }
 
-export type Territory = {
-    x: string;
+export interface PaginatedResponse {
+    items: Object[];
+    total: number;
+    page: number;
+    size: number;
+    pages: number;
 }
+
