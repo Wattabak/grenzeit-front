@@ -1,37 +1,56 @@
-import React from 'react'
-import { Country } from '@/utils/types';
+"use client";
+
+import React from "react";
+import { Country } from "@/utils/types";
+import { Button } from "@mui/material";
+import useSWR from "swr";
+
+const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
 
 interface CountryProps {
   params: {
-    countryId: string
-  }
+    countryId: string;
+  };
 }
-const apiHost = `${process.env.NEXT_PUBLIC_GRENZEIT_API_SCHEME}://${process.env.NEXT_PUBLIC_GRENZEIT_API_HOST}/api/latest/`
+const apiHost = `${process.env.NEXT_PUBLIC_GRENZEIT_API_SCHEME}://${process.env.NEXT_PUBLIC_GRENZEIT_API_HOST}/api/latest/`;
 
-async function getCountry(id: string) {
-  const res = await fetch(`${apiHost}countries/${id}`, { cache: 'no-store' });
-  if (!res.ok) {
-      // This will activate the closest `error.js` Error Boundary
-      throw new Error(`Failed to fetch country ${id}`);
-  }
-  return res.json()
+function useCountry(countryId: string) {
+  const { data, error, isLoading } = useSWR<Country, Error>(
+    `/api/grenzeit/countries/${countryId}`,
+    fetcher
+  );
+
+  return {
+    country: data,
+    error,
+    isLoading,
+  };
 }
 
-const country = async ({ params }: CountryProps) => {
-  const result: Country = await getCountry(params.countryId)
-  console.log(result)
+export default function Page({ params }: CountryProps) {
+  const { country, error, isLoading } = useCountry(params.countryId);
+  if (error) {
+    // This will activate the closest `error.js` Error Boundary
+    throw new Error(`Failed to fetch country ${params.countryId}`);
+  }
+
+  if (isLoading) return <div>Loading ...</div>;
+  console.log(country);
+  if (!country) return <div>Huh</div>;
+
   return (
     <div>
-      <h1>{result.name_eng}</h1>
+      <h1>{country.name_eng}</h1>
       <ul>
-        {
-          Object.entries(result).map(([k, value]) => {
-            return <li key={k}>{k}: {value}</li>
-          })
-        }
+        {Object.entries(country).map(([k, value]) => {
+          return (
+            <li key={k}>
+              {k}: {value}
+            </li>
+          );
+        })}
       </ul>
+      {/* <Button action={}>Edit</Button> */}
     </div>
   );
 }
-
-export default country;
