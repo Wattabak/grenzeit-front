@@ -4,6 +4,9 @@ import React from "react";
 import { Country, PaginatedResponse } from "@/utils/types";
 import useSWR from "swr";
 import CountriesGrid from "@/components/CountriesGrid";
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import { Button } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 interface CountryListResponse extends PaginatedResponse {
   items: Country[];
@@ -32,6 +35,7 @@ interface CountryListProps {
 
 export default function Page({ params }: CountryListProps) {
   const { countries, error, isLoading } = useCountries();
+  const router = useRouter();
 
   if (error) {
     // This will activate the closest `error.js` Error Boundary
@@ -45,6 +49,15 @@ export default function Page({ params }: CountryListProps) {
     <>
       <h1 className="text-3xl font-bold">Countries list</h1>
       <CountriesGrid countries={countries.items}></CountriesGrid>
+      <Button
+        onClick={() => {
+          router.push(`countries/add`);
+        }}
+        variant="contained"
+        startIcon={<AddOutlinedIcon />}
+      >
+        Create new
+      </Button>
     </>
   );
 }

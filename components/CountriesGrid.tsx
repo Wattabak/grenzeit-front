@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 interface CountriesGridProps {
   countries: Country[];
 }
+
 const CountriesGrid = (props: CountriesGridProps) => {
   const router = useRouter();
   const columns: GridColDef[] = [

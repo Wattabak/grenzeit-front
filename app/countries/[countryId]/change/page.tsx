@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
 import React from "react";
-import { Country } from "@/utils/types";
-import useSWR from "swr";
-
+import { Box } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useRouter } from "next/navigation";
-import CountryView from "@/components/CountryView";
+import CountryEditView from "@/components/CountryEditView";
+import useSWR from "swr";
+import { Country } from "@/utils/types";
 
 interface CountryProps {
   params: {
@@ -43,13 +43,12 @@ export default function Page({ params }: CountryProps) {
   if (isLoading) return <div>Loading ...</div>;
   console.log(country);
   if (!country) return <div>Huh</div>;
-
   return (
-    <div>
+    <Box>
       <IconButton onClick={() => router.push("/countries")}>
         <ArrowBackIcon />
       </IconButton>
-      <CountryView country={country}></CountryView>
-    </div>
+      <CountryEditView country={country} />
+    </Box>
   );
 }
