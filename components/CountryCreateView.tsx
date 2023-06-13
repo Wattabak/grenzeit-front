@@ -10,6 +10,12 @@ import TextField from "@mui/material/TextField";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useRouter } from "next/navigation";
+import { Input } from "@mui/material";
+import { Viewer, Entity } from "resium";
+import { Cartesian3 } from "cesium";
+import * as Ces from 'cesium' ;
+
+Ces.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiNTcyMWYwMi0yZGQ5LTRmODYtYjhmOS1mYTMzNWIxZGU2ZWEiLCJpZCI6MTAwNTk0LCJpYXQiOjE2NTczMjAzODZ9._CN9Nveo0jvNiWgNDR-B3NKhUWEmbXZS1IQHt_qciCM';
 
 const CountryCreateView = () => {
   const router = useRouter();
@@ -17,6 +23,10 @@ const CountryCreateView = () => {
   const [name_zeit, setname_zeit] = useState("");
   const [founded_at, setfounded_at] = useState(new Date("01-01-2000"));
   const [dissolved_at, setDissolved_at] = useState(new Date("01-01-2000"));
+
+  const handleTerritoryUpload = (e: any) => {
+    console.log(e.files[0]);
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -94,6 +104,13 @@ const CountryCreateView = () => {
                 value={dissolved_at}
                 onChange={(e) => setDissolved_at(e.target.value)}
               />
+              <TextField
+                type="file"
+                id="territory"
+                label="Upload"
+                variant="standard"
+                onChange={(e) => handleTerritoryUpload(e)}
+              ></TextField>
 
               <Button
                 variant="contained"
@@ -112,6 +129,13 @@ const CountryCreateView = () => {
             </Stack>
           </form>
         </Box>
+        <Viewer>
+          <Entity
+            name="tokyo"
+            description="test"
+            position={Cartesian3.fromDegrees(139.767052, 35.681167, 100)}
+          />
+        </Viewer>
       </LocalizationProvider>
     </>
   );
