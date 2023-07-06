@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Country, PaginatedResponse } from "@/utils/types";
 import useSWR from "swr";
 import CountriesGrid from "@/components/CountriesGrid";
@@ -14,9 +14,9 @@ interface CountryListResponse extends PaginatedResponse {
 
 const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
 
-function useCountries() {
+function useCountries(page: number, size: number) {
   const { data, error, isLoading } = useSWR<CountryListResponse, Error>(
-    "/api/grenzeit/countries",
+    `/api/grenzeit/countries/?page=${page}&size=${size}`,
     fetcher
   );
 
@@ -34,21 +34,37 @@ interface CountryListProps {
 }
 
 export default function Page({ params }: CountryListProps) {
-  const { countries, error, isLoading } = useCountries();
+  const [paginationModel, setPaginationModel] = useState({
+    pageSize:  50,
+    page: 1,
+  });
+  const { countries, error, isLoading } = useCountries(paginationModel.page, paginationModel.pageSize);
+
+  const [rowCountState, setRowCountState] = useState(countries?.total || 0);
+
+  useEffect(() => {
+    setRowCountState((prevRowCountState) =>
+      countries?.total !== undefined ? countries?.total : prevRowCountState
+    );
+  }, [countries?.total, setRowCountState]);
+
   const router = useRouter();
 
   if (error) {
     // This will activate the closest `error.js` Error Boundary
     throw new Error("Failed to fetch data on countries");
   }
-  if (isLoading) return <div>Loading ...</div>;
-
-  if (!countries) return <div>Huh</div>;
 
   return (
     <>
       <h1 className="text-3xl font-bold">Countries list</h1>
-      <CountriesGrid countries={countries.items}></CountriesGrid>
+      <CountriesGrid
+        countries={countries?.items || []}
+        setPaginationModel={setPaginationModel}
+        paginationModel={paginationModel}
+        rowCountState={rowCountState}
+        loading={isLoading}
+      ></CountriesGrid>
       <Button
         onClick={() => {
           router.push(`countries/add`);

@@ -1,16 +1,21 @@
 "use client";
 
-import React from "react";
 import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
 import { Country } from "@/utils/types";
 import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 
 interface CountriesGridProps {
   countries: Country[];
+  setPaginationModel: any;
+  paginationModel: any;
+  rowCountState: any;
+  loading: boolean;
 }
 
 const CountriesGrid = (props: CountriesGridProps) => {
   const router = useRouter();
+
   const columns: GridColDef[] = [
     { field: "uid", headerName: "uid" },
     { field: "name_eng", headerName: "name_eng" },
@@ -31,9 +36,14 @@ const CountriesGrid = (props: CountriesGridProps) => {
       <DataGrid
         columns={columns}
         rows={rows}
+        rowCount={props.rowCountState}
         onRowClick={(item) => {
           router.push(`countries/${item.id}`);
         }}
+        paginationModel={props.paginationModel}
+        onPaginationModelChange={props.setPaginationModel}
+        paginationMode="server"
+        loading={props.loading}
       ></DataGrid>
     </div>
   );

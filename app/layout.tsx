@@ -1,8 +1,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { Metadata } from "next";
-import Head from "next/head";
-import "public/cesium/Widgets/widgets.css"
+import "public/cesium/Widgets/widgets.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,11 +20,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <main>
-          <div className="container mx-auto p-20">
-          {children}
-          </div>
+          <div className="container mx-auto p-20">{children}</div>
         </main>
-        </body>
+      </body>
     </html>
   );
 }

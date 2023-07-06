@@ -4,6 +4,11 @@ export type Country = {
   dissolved_at?: Date;
   name_zeit: string;
   name_eng: string;
+  territory: {
+    date_start: Date;
+    date_end: Date;
+    geometry: object
+  }
 };
 
 export interface PaginatedResponse {

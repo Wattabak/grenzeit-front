@@ -10,12 +10,9 @@ import TextField from "@mui/material/TextField";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useRouter } from "next/navigation";
-import { Input } from "@mui/material";
-import { Viewer, Entity } from "resium";
-import { Cartesian3 } from "cesium";
-import * as Ces from 'cesium' ;
+import { Viewer, GeoJsonDataSource } from "resium";
+import { json } from "stream/consumers";
 
-Ces.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiNTcyMWYwMi0yZGQ5LTRmODYtYjhmOS1mYTMzNWIxZGU2ZWEiLCJpZCI6MTAwNTk0LCJpYXQiOjE2NTczMjAzODZ9._CN9Nveo0jvNiWgNDR-B3NKhUWEmbXZS1IQHt_qciCM';
 
 const CountryCreateView = () => {
   const router = useRouter();
@@ -24,8 +21,14 @@ const CountryCreateView = () => {
   const [founded_at, setfounded_at] = useState(new Date("01-01-2000"));
   const [dissolved_at, setDissolved_at] = useState(new Date("01-01-2000"));
 
+  const [uploadedTerritory, setSelectedFile] = useState();
+
   const handleTerritoryUpload = (e: any) => {
-    console.log(e.files[0]);
+    var reader = new FileReader();
+    reader.onload = (ev) => {
+      setSelectedFile(JSON.parse(ev.target.result));
+    };
+    reader.readAsText(e.target.files[0]);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -34,29 +37,39 @@ const CountryCreateView = () => {
     if (!name_eng || !name_zeit || !founded_at) {
       throw new Error("Yo these should be filled");
     }
-    console.log({
-      name_eng,
-      name_zeit,
-      founded_at,
-      dissolved_at,
-    });
-    const response = await fetch("/api/grenzeit/countries", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const req_body: object = {
+      name_eng: name_eng,
+      name_zeit: name_zeit,
+      founded_at: founded_at,
+      dissolved_at: dissolved_at,
+      territory: {
+        geometry: uploadedTerritory,
+        date_start: founded_at,
+        date_end: dissolved_at
       },
-      body: JSON.stringify({
-        name_eng: name_eng,
-        name_zeit: name_zeit,
-        founded_at: founded_at,
-        dissolved_at: dissolved_at,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("something went wrong with POST request");
     }
-    router.push("/countries");
+    console.log(req_body);
+    let json_body = JSON.stringify(req_body)
+    try {
+      const response = await fetch("/api/grenzeit/countries/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": json_body.length.toString(),
+        },
+        body: json_body,
+      });
+      if (!response.ok) {
+        console.log(response.status)
+        throw new Error("something went wrong with POST request");
+      }
+      router.push("/countries");
+    } catch (error) {
+      console.log(error)
+      return
+    }
+
+
   };
 
   return (
@@ -130,11 +143,7 @@ const CountryCreateView = () => {
           </form>
         </Box>
         <Viewer>
-          <Entity
-            name="tokyo"
-            description="test"
-            position={Cartesian3.fromDegrees(139.767052, 35.681167, 100)}
-          />
+          <GeoJsonDataSource data={uploadedTerritory? uploadedTerritory: null} />
         </Viewer>
       </LocalizationProvider>
     </>

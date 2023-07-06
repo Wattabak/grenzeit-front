@@ -11,6 +11,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useRouter } from "next/navigation";
 import { Country } from "@/utils/types";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const CountryEditView: React.FC<Country> = ({ country }) => {
   const router = useRouter();
@@ -19,6 +20,13 @@ const CountryEditView: React.FC<Country> = ({ country }) => {
   const [name_zeit, setname_zeit] = useState(country.name_zeit);
   const [founded_at, setfounded_at] = useState(country.founded_at);
   const [dissolved_at, setDissolved_at] = useState(country.dissolved_at);
+
+  const handleDelete = async () => {
+    await fetch(`/api/grenzeit/countries/${country.uid}/`, {
+      method: "DELETE",
+    });
+    router.push(`countries/`);
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -55,7 +63,7 @@ const CountryEditView: React.FC<Country> = ({ country }) => {
     <>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box>
-          <h1 className="text-2xl font-bold">New country</h1>
+          <h1 className="text-2xl font-bold">Edit country</h1>
           <form onSubmit={handleSubmit}>
             <Stack spacing={3}>
               <TextField
@@ -110,6 +118,14 @@ const CountryEditView: React.FC<Country> = ({ country }) => {
                 type="submit"
               >
                 Save and exit
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<DeleteIcon />}
+                color="error"
+                onClick={handleDelete}
+              >
+                Delete
               </Button>
             </Stack>
           </form>
