@@ -12,14 +12,14 @@ interface CountryListResponse extends PaginatedResponse {
   items: Country[];
 }
 
-const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
+const fetcher = (...args: any) => fetch(...args).then((res) => res.json()).catch((err)=>(console.log(err)));
 
 function useCountries(page: number, size: number) {
   const { data, error, isLoading } = useSWR<CountryListResponse, Error>(
     `/api/grenzeit/countries/?page=${page}&size=${size}`,
     fetcher
   );
-
+  console.log(data)
   return {
     countries: data,
     error,
@@ -39,7 +39,6 @@ export default function Page({ params }: CountryListProps) {
     page: 1,
   });
   const { countries, error, isLoading } = useCountries(paginationModel.page, paginationModel.pageSize);
-
   const [rowCountState, setRowCountState] = useState(countries?.total || 0);
 
   useEffect(() => {
@@ -49,11 +48,6 @@ export default function Page({ params }: CountryListProps) {
   }, [countries?.total, setRowCountState]);
 
   const router = useRouter();
-
-  if (error) {
-    // This will activate the closest `error.js` Error Boundary
-    throw new Error("Failed to fetch data on countries");
-  }
 
   return (
     <>

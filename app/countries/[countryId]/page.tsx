@@ -15,7 +15,7 @@ interface CountryProps {
   };
 }
 
-const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
+const fetcher = (...args: any) => fetch(...args).then((res) => res.json()).catch((err)=>(console.log(err)));
 
 function useCountry(countryId: string) {
   const { data, error, isLoading } = useSWR<Country, Error>(
@@ -34,11 +34,6 @@ export default function Page({ params }: CountryProps) {
   const router = useRouter();
 
   const { country, error, isLoading } = useCountry(params.countryId);
-
-  if (error) {
-    // This will activate the closest `error.js` Error Boundary
-    throw new Error(`Failed to fetch country ${params.countryId}`);
-  }
 
   if (isLoading) return <div>Loading ...</div>;
   console.log(country);

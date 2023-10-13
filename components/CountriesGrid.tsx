@@ -3,7 +3,7 @@
 import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
 import { Country } from "@/utils/types";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React from "react";
 
 interface CountriesGridProps {
   countries: Country[];
@@ -21,6 +21,7 @@ const CountriesGrid = (props: CountriesGridProps) => {
     { field: "name_eng", headerName: "name_eng" },
     { field: "founded_at", headerName: "founded_at" },
     { field: "dissolved_at", headerName: "dissolved_at" },
+    { field: "cluster", headerName: "cluster" },
     { field: "name_zeit", headerName: "name_zeit" },
   ];
 

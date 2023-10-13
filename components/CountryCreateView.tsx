@@ -11,8 +11,6 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useRouter } from "next/navigation";
 import { Viewer, GeoJsonDataSource } from "resium";
-import { json } from "stream/consumers";
-
 
 const CountryCreateView = () => {
   const router = useRouter();
@@ -45,11 +43,11 @@ const CountryCreateView = () => {
       territory: {
         geometry: uploadedTerritory,
         date_start: founded_at,
-        date_end: dissolved_at
+        date_end: dissolved_at,
       },
-    }
+    };
     console.log(req_body);
-    let json_body = JSON.stringify(req_body)
+    let json_body = JSON.stringify(req_body);
     try {
       const response = await fetch("/api/grenzeit/countries/", {
         method: "POST",
@@ -60,16 +58,14 @@ const CountryCreateView = () => {
         body: json_body,
       });
       if (!response.ok) {
-        console.log(response.status)
+        console.log(response.status);
         throw new Error("something went wrong with POST request");
       }
       router.push("/countries");
     } catch (error) {
-      console.log(error)
-      return
+      console.log(error);
+      return;
     }
-
-
   };
 
   return (
@@ -143,7 +139,9 @@ const CountryCreateView = () => {
           </form>
         </Box>
         <Viewer>
-          <GeoJsonDataSource data={uploadedTerritory? uploadedTerritory: null} />
+          <GeoJsonDataSource
+            data={uploadedTerritory ? uploadedTerritory : null}
+          />
         </Viewer>
       </LocalizationProvider>
     </>
