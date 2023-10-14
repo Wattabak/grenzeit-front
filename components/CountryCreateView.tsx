@@ -68,82 +68,92 @@ const CountryCreateView = () => {
     }
   };
 
+  const viewerProps = {
+    // full: true,
+    timeline: false,
+    animation: false,
+    baseLayerPicker: false,
+    geocoder: false,
+    homeButton: false,
+    fullscreenButton: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+  };
+
   return (
     <>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box>
-          <h1 className="text-2xl font-bold">New country</h1>
-          <form onSubmit={handleSubmit}>
-            <Stack spacing={3}>
-              <TextField
-                type="text"
-                id="name_eng"
-                label="Name in english"
-                variant="standard"
-                fullWidth
-                required
-                value={name_eng}
-                onChange={(e) => setname_eng(e.target.value)}
-              />
-              <TextField
-                id="name_zeit"
-                label="Name that citizens of that country called themselves"
-                variant="standard"
-                fullWidth
-                required
-                value={name_zeit}
-                onChange={(e) => setname_zeit(e.target.value)}
-              />
-              <TextField
-                id="founded_at"
-                type="date"
-                label="Foundation date"
-                variant="standard"
-                fullWidth
-                required
-                value={founded_at}
-                onChange={(e) => setfounded_at(e.target.value)}
-              />
-              <TextField
-                id="dissolved_at"
-                type="date"
-                label="Dissolution date"
-                variant="standard"
-                fullWidth
-                value={dissolved_at}
-                onChange={(e) => setDissolved_at(e.target.value)}
-              />
-              <TextField
-                type="file"
-                id="territory"
-                label="Upload"
-                variant="standard"
-                onChange={(e) => handleTerritoryUpload(e)}
-              ></TextField>
+      <Box>
+        <h1 className="text-2xl font-bold">New country</h1>
+        <form onSubmit={handleSubmit}>
+          <Stack spacing={3}>
+            <TextField
+              type="text"
+              id="name_eng"
+              label="Name in english"
+              variant="standard"
+              fullWidth
+              required
+              value={name_eng}
+              onChange={(e) => setname_eng(e.target.value)}
+            />
+            <TextField
+              id="name_zeit"
+              label="Name that citizens of that country called themselves"
+              variant="standard"
+              fullWidth
+              required
+              value={name_zeit}
+              onChange={(e) => setname_zeit(e.target.value)}
+            />
+            <TextField
+              id="founded_at"
+              type="date"
+              label="Foundation date"
+              variant="standard"
+              fullWidth
+              required
+              value={founded_at}
+              onChange={(e) => setfounded_at(e.target.value)}
+            />
+            <TextField
+              id="dissolved_at"
+              type="date"
+              label="Dissolution date"
+              variant="standard"
+              fullWidth
+              value={dissolved_at}
+              onChange={(e) => setDissolved_at(e.target.value)}
+            />
+            <TextField
+              type="file"
+              id="territory"
+              label="Upload"
+              variant="standard"
+              onChange={(e) => handleTerritoryUpload(e)}
+            ></TextField>
 
-              <Button
-                variant="contained"
-                startIcon={<AddOutlinedIcon />}
-                type="submit"
-              >
-                Save
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<CloseOutlinedIcon />}
-                type="submit"
-              >
-                Save and exit
-              </Button>
-            </Stack>
-          </form>
-        </Box>
-        <Viewer>
-          <GeoJsonDataSource
-            data={uploadedTerritory ? uploadedTerritory : null}
-          />
-        </Viewer>
-      </LocalizationProvider>
+            <Button
+              variant="contained"
+              startIcon={<AddOutlinedIcon />}
+              type="submit"
+            >
+              Save
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<CloseOutlinedIcon />}
+              type="submit"
+            >
+              Save and exit
+            </Button>
+          </Stack>
+        </form>
+      </Box>
+      <Viewer {...viewerProps}>
+        <GeoJsonDataSource
+          data={uploadedTerritory ? uploadedTerritory : null}
+        />
+      </Viewer>
     </>
   );
 };
