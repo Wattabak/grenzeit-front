@@ -7,6 +7,7 @@ import "public/cesium/Widgets/widgets.css";
 import { Ion } from "cesium";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import Head from "next/head";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,10 +27,13 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <Head>
+        <title>Grenzeit</title>
+      </Head>
+      <body>
         <main>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <div className="container mx-auto p-20">{children}</div>
+            <div className="font-sans">{children}</div>
           </LocalizationProvider>
         </main>
       </body>

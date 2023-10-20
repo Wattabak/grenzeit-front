@@ -24,6 +24,23 @@ export type Country = {
   };
 };
 
+export type Territory = {
+  uid: string;
+  date_start: Date;
+  date_end: Date;
+  geometry: Geometry;
+};
+
+export type FullCountry = {
+  uid: string;
+  founded_at: Date;
+  dissolved_at?: Date;
+  name_zeit: string;
+  name_eng: string;
+  cluster?: string;
+  territory: Territory[];
+};
+
 export type Cluster = {
   uid: string;
   name: string;

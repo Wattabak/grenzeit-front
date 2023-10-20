@@ -1,20 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Cluster } from "@/utils/types";
 import useSWR from "swr";
-import CountriesGrid from "@/components/CountriesGrid";
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import { Button } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { Entity, GeoJsonDataSource, Viewer } from "resium";
+import { GeoJsonDataSource, Viewer } from "resium";
 import { Color } from "cesium";
 
 interface ClusterListResponse {
   clusters: Cluster[];
 }
 
-const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
+const fetcher = (...args: any) =>
+  fetch(...args)
+    .then((res) => res.json())
+    .catch((e) => console.error(e));
 
 function useClusters() {
   const { data, error, isLoading } = useSWR<ClusterListResponse, Error>(
@@ -39,20 +40,39 @@ export default function Page({ params }: ClusterListProps) {
   const { clusters, error, isLoading } = useClusters();
 
   // const [rowCountState, setRowCountState] = useState(clusters.clusters.length || 0);
+  const viewerRef = useRef();
 
   const router = useRouter();
 
-  if (error) {
-    // This will activate the closest `error.js` Error Boundary
-    throw new Error("Failed to fetch data on countries");
-  }
-
-  if (isLoading) return <div>Loading ...</div>;
+  const viewerProps = {
+    full: true,
+    timeline: false,
+    animation: false,
+    baseLayerPicker: false,
+    geocoder: false,
+    homeButton: false,
+    fullscreenButton: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+    ref: viewerRef,
+  };
 
   return (
     <>
-      <h1 className="text-3xl font-bold">Clusters</h1>
-      <Viewer>
+      <Viewer {...viewerProps}>
+        <div
+          className="text-3xl font-bold"
+          style={{
+            position: "absolute",
+            top: "0",
+            left: "0",
+            width: "25%",
+            height: "100%",
+            padding: "15px",
+          }}
+        >
+          <h1 className="text-white text-3xl">Cluster map</h1>
+        </div>
         {clusters?.clusters?.map((cluster) => (
           <GeoJsonDataSource
             key={cluster.uid}
@@ -61,6 +81,11 @@ export default function Page({ params }: ClusterListProps) {
             strokeWidth={0.9}
             stroke={Color.WHITE}
             fill={Color.fromRandom()}
+            onLoad={(g) => {
+              g.entities.values.map((e) => {
+                e.name = cluster.name;
+              });
+            }}
           />
         ))}
       </Viewer>

@@ -3,25 +3,20 @@
 import React, { useState, useEffect } from "react";
 import { Cluster, Country } from "@/utils/types";
 import useSWR from "swr";
-import CountriesGrid from "@/components/CountriesGrid";
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import { Button, IconButton } from "@mui/material";
+import { IconButton } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { Entity, GeoJsonDataSource, Viewer } from "resium";
+import { GeoJsonDataSource, Viewer } from "resium";
 import { DatePicker } from "@mui/x-date-pickers";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useRef } from 'react';
 import {
-  BoundingSphere,
-  Cartesian3,
   Color,
   PropertyBag,
-  Label,
   LabelGraphics,
   LabelStyle,
+  Terrain,
 } from "cesium";
-import { useCesium } from "resium";
 import dayjs, { Dayjs } from "dayjs";
 
 // const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
@@ -66,7 +61,7 @@ export default function Page() {
   const { countries, error, isLoading } = useClusters(clusterNames, showDate);
 
   const router = useRouter();
-  const {viewer} = useCesium();
+
   const viewerProps = {
     full: true,
     timeline: false,
@@ -77,7 +72,7 @@ export default function Page() {
     fullscreenButton: false,
     sceneModePicker: false,
     navigationHelpButton: false,
-    ref: viewerRef
+    ref: viewerRef,
   };
 
   function handleDateChange(newDate: Dayjs | null) {
@@ -107,7 +102,7 @@ export default function Page() {
             <IconButton onClick={() => router.push("/countries")}>
               <ArrowBackIcon className="text-white" />
             </IconButton>
-            <h1 className="text-white">World map</h1>
+            <h1 className="text-white text-3xl">World map</h1>
             {/* needs a custom-made component to handle BC dates and more */}
             <DatePicker
               defaultValue={dayjs(showDate)}

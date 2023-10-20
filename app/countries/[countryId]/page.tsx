@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Country } from "@/utils/types";
+import { FullCountry } from "@/utils/types";
 import useSWR from "swr";
 
 import IconButton from "@mui/material/IconButton";
@@ -15,11 +15,14 @@ interface CountryProps {
   };
 }
 
-const fetcher = (...args: any) => fetch(...args).then((res) => res.json()).catch((err)=>(console.log(err)));
+const fetcher = (...args: any) =>
+  fetch(...args)
+    .then((res) => res.json())
+    .catch((err) => console.log(err));
 
 function useCountry(countryId: string) {
-  const { data, error, isLoading } = useSWR<Country, Error>(
-    `/api/grenzeit/countries/${countryId}`,
+  const { data, error, isLoading } = useSWR<FullCountry, Error>(
+    `/api/grenzeit/countries/full/${countryId}`,
     fetcher
   );
 
@@ -35,16 +38,15 @@ export default function Page({ params }: CountryProps) {
 
   const { country, error, isLoading } = useCountry(params.countryId);
 
-  if (isLoading) return <div>Loading ...</div>;
-  console.log(country);
-  if (!country) return <div>Huh</div>;
-
   return (
     <div>
       <IconButton onClick={() => router.push("/countries")}>
         <ArrowBackIcon />
       </IconButton>
-      <CountryView country={country}></CountryView>
+      <CountryView
+        country={typeof country != "undefined" ? country : {territories: []}}
+        editorState={"View"}
+      />
     </div>
   );
 }

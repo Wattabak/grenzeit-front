@@ -5,7 +5,7 @@ import { Box } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useRouter } from "next/navigation";
-import CountryEditView from "@/components/CountryEditView";
+import CountryView from "@/components/CountryView";
 import useSWR from "swr";
 import { Country } from "@/utils/types";
 
@@ -48,7 +48,7 @@ export default function Page({ params }: CountryProps) {
       <IconButton onClick={() => router.push("/countries")}>
         <ArrowBackIcon />
       </IconButton>
-      <CountryEditView country={country} />
+      <CountryView country={country} editorState={"Edit"} />
     </Box>
   );
 }
