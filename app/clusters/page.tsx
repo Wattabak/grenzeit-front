@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Cluster } from "@/utils/types";
 import useSWR from "swr";
-import { Button } from "@mui/material";
-import { useRouter } from "next/navigation";
 import { GeoJsonDataSource, Viewer } from "resium";
 import { Color } from "cesium";
 
@@ -39,10 +37,7 @@ interface ClusterListProps {
 export default function Page({ params }: ClusterListProps) {
   const { clusters, error, isLoading } = useClusters();
 
-  // const [rowCountState, setRowCountState] = useState(clusters.clusters.length || 0);
   const viewerRef = useRef();
-
-  const router = useRouter();
 
   const viewerProps = {
     full: true,

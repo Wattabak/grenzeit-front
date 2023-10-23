@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { FullCountry } from "@/utils/types";
 import useSWR from "swr";
 
@@ -25,7 +25,7 @@ function useCountry(countryId: string) {
     `/api/grenzeit/countries/full/${countryId}`,
     fetcher
   );
-
+  if (isLoading) {return {country: {territories: []}, error, isLoading }}
   return {
     country: data,
     error,
@@ -33,19 +33,29 @@ function useCountry(countryId: string) {
   };
 }
 
+function useSchema(){
+  const { data, error, isLoading } = useSWR<object, Error>(
+    `/api/grenzeit/admin/schema/full_country`,
+    fetcher
+  );
+  if (isLoading) {return {properties: undefined}}
+  return data;
+};
+
 export default function Page({ params }: CountryProps) {
   const router = useRouter();
 
   const { country, error, isLoading } = useCountry(params.countryId);
-
+  const schema = useSchema();
   return (
     <div>
       <IconButton onClick={() => router.push("/countries")}>
         <ArrowBackIcon />
       </IconButton>
       <CountryView
-        country={typeof country != "undefined" ? country : {territories: []}}
+        country={typeof country != "undefined" ? country : { territories: [] }}
         editorState={"View"}
+        schema={schema}
       />
     </div>
   );

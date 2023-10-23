@@ -21,10 +21,11 @@ import {
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import SaveIcon from "@mui/icons-material/Save";
-import { Viewer, GeoJsonDataSource, EdgeDetectionStage } from "resium";
+import { Viewer, GeoJsonDataSource } from "resium";
 import { Color } from "cesium";
 import dayjs from "dayjs";
 import ClearIcon from "@mui/icons-material/Clear";
+import { DatePicker } from "@mui/x-date-pickers";
 
 const EditorState = {
   Edit: "Edit",
@@ -32,18 +33,56 @@ const EditorState = {
   New: "New",
 };
 
-const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
-  const [countryFormState, setCountryFormState] = useState({ ...country });
+type SchemaType = {
+  anyOf: object[] | undefined;
+  format: string | undefined;
+  type: string | undefined;
+  description: string | undefined;
+};
+
+type CountryViewProps = {
+  country: FullCountry;
+  schema: {
+    properties: {
+      [key: string]: SchemaType;
+    };
+    required: string[];
+  };
+  editorState: typeof EditorState;
+};
+
+const extractType = (schema: SchemaType) => {
+  const multipleOptions = schema?.anyOf?.reduce((total, el) => {
+    switch (true) {
+      case total == "date":
+        return "date";
+      case el?.format == "date":
+        return "date";
+      case el?.format == "date-time":
+        return "date";
+      case el?.type == "string":
+        return "string";
+    }
+  });
+  if (schema.format) {
+    return schema.format;
+  }
+  return schema.type ? schema.type : multipleOptions;
+};
+
+const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
+  const [countryFormState, setCountryFormState] = useState({});
+  const [territoriesState, setTerritoriesState] = useState([]);
 
   useEffect(() => {
-    // action on update of movies
     setCountryFormState({ ...country });
-  }, [country]);
+    setTerritoriesState([...country.territories]);
+  }, [country, schema]);
 
   const [editState, setEditState] = useState(
     editorState ? editorState : EditorState.View
   );
-  const [modalState, setModalState] = useState(false);
+  const [deleteModalState, setDeleteModalState] = useState(false);
 
   const router = useRouter();
   const viewerRef = useRef();
@@ -65,7 +104,6 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
     ) {
       throw new Error("Yo these should be filled");
     }
-
     const response = await fetch(
       `/api/grenzeit/countries/${countryFormState.uid}`,
       {
@@ -79,6 +117,7 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
           founded_at: countryFormState.founded_at,
           dissolved_at: countryFormState.dissolved_at,
           cluster: countryFormState.cluster,
+          territories: countryFormState.territories,
         }),
       }
     );
@@ -91,94 +130,53 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
   };
 
   const renderProperties = () => {
-    if (editState == EditorState.Edit) {
-      return (
-        <>
-          <h2 className="text-2xl font-bold">Edit Properties</h2>
-          <form onSubmit={handleEditSubmit}>
-            <Stack spacing={3}>
-              <TextField
-                type="text"
-                id="name_eng"
-                label="Name in english"
-                variant="standard"
-                fullWidth
-                required
-                value={countryFormState.name_eng}
-                onChange={(e) =>
-                  setCountryFormState({
-                    ...countryFormState,
-                    name_eng: e.target.value,
-                  })
-                }
-              />
-              <TextField
-                id="name_zeit"
-                label="Name that citizens of that country called themselves"
-                variant="standard"
-                fullWidth
-                required
-                value={countryFormState.name_zeit}
-                onChange={(e) =>
-                  setCountryFormState({
-                    ...countryFormState,
-                    name_zeit: e.target.value,
-                  })
-                }
-              />
-              <TextField
-                id="founded_at"
-                type="date"
-                label="Foundation date"
-                variant="standard"
-                fullWidth
-                required
-                value={countryFormState.founded_at}
-                onChange={(e) =>
-                  setCountryFormState({
-                    ...countryFormState,
-                    founded_at: e.target.value,
-                  })
-                }
-              />
-              <TextField
-                id="dissolved_at"
-                type="date"
-                label="Dissolution date"
-                variant="standard"
-                fullWidth
-                value={countryFormState?.dissolved_at}
-                onChange={(e) =>
-                  setCountryFormState({
-                    ...countryFormState,
-                    dissolved_at: e.target.value,
-                  })
-                }
-              />
-            </Stack>
-          </form>
-        </>
-      );
-    }
+    const headerText =
+      editState == EditorState.Edit ? "Edit Properties" : "Properties";
 
+    const hiddenFields = ["uid", "territories", "territory"];
+    const schemaInputMap = {
+      string: "text",
+      date: "date",
+      datetime: "date",
+      array: "text",
+    };
+    const inputType = (schemaType: string) =>
+      (schemaInputMap as any)[schemaType];
     return (
       <>
-        <h2 className="text-2xl font-bold">Properties</h2>
-
-        <ul className="list-none p-0">
+        <h2 className="text-2xl font-bold">{headerText}</h2>
+        <form onSubmit={handleEditSubmit}>
           <Stack spacing={3}>
             {Object.entries(countryFormState).map(([k, value]) => {
-              if (k == "territories") {
-                return <li key={k}></li>;
+              if (hiddenFields.includes(k)) {
+                return;
               }
-              return (
-                <li key={k}>
-                  {k}: {value ? value : "None"}
-                </li>
-              );
+              const fieldLabel = schema?.properties[k].description
+                ? schema?.properties[k].description
+                : k;
+              const fieldArgs = {
+                type: inputType(extractType(schema?.properties[k])),
+                id: k,
+                disabled: editState == EditorState.View,
+                label: fieldLabel,
+                variant: "standard",
+                fullWidth: true,
+                clearable: "true",
+                required: schema?.required.includes(k),
+                InputProps: {
+                  readOnly: editState == EditorState.View,
+                },
+                onChange: (e: Event) =>
+                  setCountryFormState({
+                    ...countryFormState,
+                    [k]: e.target.value,
+                  }),
+                value: value ? value : "None",
+              };
+              return <TextField key={k} {...fieldArgs} />;
             })}
           </Stack>
-        </ul>
+        </form>
       </>
     );
   };
@@ -203,12 +201,11 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
           >
             Save
           </Button>
-
           <Button
             variant="contained"
             startIcon={<DeleteIcon />}
             color="error"
-            onClick={() => setModalState(true)}
+            onClick={() => setDeleteModalState(true)}
           >
             Delete
           </Button>
@@ -239,7 +236,7 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
             variant="contained"
             startIcon={<DeleteIcon />}
             color="error"
-            onClick={() => setModalState(true)}
+            onClick={() => setDeleteModalState(true)}
           >
             Delete
           </Button>
@@ -272,34 +269,53 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
     }
   };
   const renderTerritories = () => {
+    const headerText =
+      editState == EditorState.Edit
+        ? "Edit Territories"
+        : "Territorial changes";
+
     return (
       <>
-        <List
-          sx={{
-            width: "100%",
-            maxWidth: 360,
-            bgcolor: "background.paper",
-            position: "relative",
-            overflow: "auto",
-            maxHeight: 300,
-            "& ul": { padding: 0 },
-          }}
-        >
-          {country.territories.map((territory: Territory) => {
+        <h2 className="text-2xl font-bold">{headerText}</h2>
+        <List>
+          {territoriesState.map((territory: Territory) => {
             return (
               <ListItem key={territory.uid}>
                 <ListItemIcon>
-                  <Checkbox
-                    edge="start"
-                    checked={false}
-                    tabIndex={-1}
-                    disableRipple
-                  />
+                  <ListItemText>1.</ListItemText>
                 </ListItemIcon>
-                <ListItemText>
-                  {dayjs(territory.date_start).format("YYYY/MM/DD")} -{" "}
-                  {dayjs(territory.date_end).format("YYYY/MM/DD")}
-                </ListItemText>
+                <DatePicker
+                  label="Start"
+                  readOnly={editState == EditorState.Edit ? false : true}
+                  value={dayjs(territory.date_start)}
+                  onChange={(e: dayjs.Dayjs) => {
+                    const modifiedTerritories = [...territoriesState];
+                    modifiedTerritories[territoriesState.indexOf(territory)] = {
+                      ...territory,
+                      date_start: e.format("YYYY-MM-DD"),
+                    };
+                    setCountryFormState({
+                      ...countryFormState,
+                      territories: modifiedTerritories,
+                    });
+                  }}
+                />
+                <DatePicker
+                  label="End"
+                  readOnly={editState == EditorState.Edit ? false : true}
+                  value={dayjs(territory.date_end)}
+                  onChange={(e: Event) => {
+                    const modifiedTerritories = [...territoriesState];
+                    modifiedTerritories[territoriesState.indexOf(territory)] = {
+                      ...territory,
+                      date_end: e.format("YYYY-MM-DD"),
+                    };
+                    setCountryFormState({
+                      ...countryFormState,
+                      territories: modifiedTerritories,
+                    });
+                  }}
+                />
               </ListItem>
             );
           })}
@@ -332,12 +348,11 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
       navigationHelpButton: false,
       ref: viewerRef,
     };
-
     return (
       <Viewer
         {...viewerProps}
         style={{
-          position: "absolute",
+          position: "fixed",
           top: "0",
           width: "65%",
           height: "100%",
@@ -345,15 +360,13 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
       >
         <GeoJsonDataSource
           data={
-            country.territories[0]?.geometry
-              ? country.territories[0]?.geometry
-              : null
+            countryFormState.territories ? countryFormState.territories[0]?.geometry : null
           }
           name={country?.name_eng}
           onLoad={(g) => {
             viewerRef.current.cesiumElement.zoomTo(g);
             g.entities.values.map((e) => {
-              e.name = country.name_eng;
+              e.name = countryFormState.name_eng;
             });
           }}
           strokeWidth={0.9}
@@ -366,7 +379,7 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
 
   return (
     <>
-      <Modal open={modalState} onClose={() => setModalState(false)}>
+      <Modal open={deleteModalState} onClose={() => setDeleteModalState(false)}>
         <Box sx={modalStyle}>
           <Typography id="modal-modal-title" variant="h6" component="h2">
             You are trying to delete Country object {country?.name_eng}
@@ -375,24 +388,35 @@ const CountryView: React.FC<FullCountry> = ({ country, editorState }) => {
             Are you sure you want to proceed? This change cannot be reversed
           </Typography>
           <Button onClick={handleDelete}>Yes</Button>
-          <Button onClick={() => setModalState(false)}>No</Button>
+          <Button onClick={() => setDeleteModalState(false)}>No</Button>
         </Box>
       </Modal>
       <h1 className="text-3xl font-bold">
-        {country?.name_eng}, {dayjs(country?.founded_at).format("YYYY")}-
-        {country?.dissolved_at
-          ? dayjs(countryFormState.dissolved_at).format("YYYY")
-          : "Unknown"}
+        <span className="break-words">{countryFormState?.name_eng}</span>
+        <span className="block text-lg">
+          {dayjs(country?.founded_at).format("YYYY")}-
+          {countryFormState?.dissolved_at
+            ? dayjs(countryFormState.dissolved_at).format("YYYY")
+            : "Unknown"}
+        </span>
       </h1>
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-1">
           {renderProperties()}
-          <h2 className="text-2xl font-bold">Territorial changes</h2>
           {renderTerritories()}
           {renderButtons()}
         </div>
-        <div className="col-span-2">
-          <div>{renderViewer()}</div>
+        <div
+          className="col-span-2 h-full"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: "65%",
+            height: "100%",
+          }}
+        >
+          {renderViewer()}
         </div>
       </div>
     </>

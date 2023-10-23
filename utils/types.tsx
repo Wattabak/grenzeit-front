@@ -38,7 +38,7 @@ export type FullCountry = {
   name_zeit: string;
   name_eng: string;
   cluster?: string;
-  territory: Territory[];
+  territories: Territory[];
 };
 
 export type Cluster = {
