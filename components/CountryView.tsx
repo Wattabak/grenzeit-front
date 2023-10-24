@@ -1,15 +1,18 @@
 "use client";
 
-import React, { FormEvent, useEffect, useState } from "react";
+import React, { FormEvent, useEffect, useReducer, useState } from "react";
 import Stack from "@mui/material/Stack";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 import { FullCountry, Territory } from "@/utils/types";
 import {
   Box,
   Button,
   Checkbox,
+  Divider,
+  IconButton,
   List,
   ListItem,
   ListItemIcon,
@@ -22,22 +25,16 @@ import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import SaveIcon from "@mui/icons-material/Save";
 import { Viewer, GeoJsonDataSource } from "resium";
-import { Color } from "cesium";
+import { Color, EntityCollection } from "cesium";
 import dayjs from "dayjs";
 import ClearIcon from "@mui/icons-material/Clear";
 import { DatePicker } from "@mui/x-date-pickers";
+import { SchemaType } from "@/utils/types";
 
 const EditorState = {
   Edit: "Edit",
   View: "View",
   New: "New",
-};
-
-type SchemaType = {
-  anyOf: object[] | undefined;
-  format: string | undefined;
-  type: string | undefined;
-  description: string | undefined;
 };
 
 type CountryViewProps = {
@@ -71,12 +68,15 @@ const extractType = (schema: SchemaType) => {
 };
 
 const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
-  const [countryFormState, setCountryFormState] = useState({});
-  const [territoriesState, setTerritoriesState] = useState([]);
+  const [countryFormState, setCountryFormState] = useState<FullCountry>({} as FullCountry);
+  const [territoriesState, setTerritoriesState] = useState([] as Territory[]);
+  const [territoryElementsState, territoryElementsUpdateEvent] = useReducer((prev, next) => {
+    return { ...prev, ...next }
+  }, { title: '', description: '', attendees: [] })
 
   useEffect(() => {
     setCountryFormState({ ...country });
-    setTerritoriesState([...country.territories]);
+    setTerritoriesState(country ? [...country.territories] : []);
   }, [country, schema]);
 
   const [editState, setEditState] = useState(
@@ -86,7 +86,6 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
 
   const router = useRouter();
   const viewerRef = useRef();
-
   const handleDelete = async () => {
     await fetch(`/api/grenzeit/countries/${countryFormState.uid}/`, {
       method: "DELETE",
@@ -111,14 +110,7 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name_eng: countryFormState.name_eng,
-          name_zeit: countryFormState.name_zeit,
-          founded_at: countryFormState.founded_at,
-          dissolved_at: countryFormState.dissolved_at,
-          cluster: countryFormState.cluster,
-          territories: countryFormState.territories,
-        }),
+        body: JSON.stringify({...countryFormState}),
       }
     );
 
@@ -145,7 +137,6 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
     return (
       <>
         <h2 className="text-2xl font-bold">{headerText}</h2>
-        <form onSubmit={handleEditSubmit}>
           <Stack spacing={3}>
             {Object.entries(countryFormState).map(([k, value]) => {
               if (hiddenFields.includes(k)) {
@@ -176,7 +167,6 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
               return <TextField key={k} {...fieldArgs} />;
             })}
           </Stack>
-        </form>
       </>
     );
   };
@@ -279,44 +269,76 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
         <h2 className="text-2xl font-bold">{headerText}</h2>
         <List>
           {territoriesState.map((territory: Territory) => {
+            let checkboxState = false;
             return (
-              <ListItem key={territory.uid}>
-                <ListItemIcon>
-                  <ListItemText>1.</ListItemText>
-                </ListItemIcon>
-                <DatePicker
-                  label="Start"
-                  readOnly={editState == EditorState.Edit ? false : true}
-                  value={dayjs(territory.date_start)}
-                  onChange={(e: dayjs.Dayjs) => {
-                    const modifiedTerritories = [...territoriesState];
-                    modifiedTerritories[territoriesState.indexOf(territory)] = {
-                      ...territory,
-                      date_start: e.format("YYYY-MM-DD"),
-                    };
-                    setCountryFormState({
-                      ...countryFormState,
-                      territories: modifiedTerritories,
-                    });
-                  }}
-                />
-                <DatePicker
-                  label="End"
-                  readOnly={editState == EditorState.Edit ? false : true}
-                  value={dayjs(territory.date_end)}
-                  onChange={(e: Event) => {
-                    const modifiedTerritories = [...territoriesState];
-                    modifiedTerritories[territoriesState.indexOf(territory)] = {
-                      ...territory,
-                      date_end: e.format("YYYY-MM-DD"),
-                    };
-                    setCountryFormState({
-                      ...countryFormState,
-                      territories: modifiedTerritories,
-                    });
-                  }}
-                />
-              </ListItem>
+              <React.Fragment key={territory.uid}>
+                <h3 className="text-lg">
+                  1. {dayjs(territory.date_start).format("YYYY")}
+                  {" - "}
+                  {territory.date_end
+                    ? dayjs(territory.date_end).format("YYYY")
+                    : "Unknown"}
+                </h3>
+                <ListItem className="space-x-2" disablePadding>
+                  <DatePicker
+                    label="Start"
+                    readOnly={editState == EditorState.Edit ? false : true}
+                    value={dayjs(territory.date_start)}
+                    onChange={(e: dayjs.Dayjs) => {
+                      const modifiedTerritories = [...territoriesState];
+                      modifiedTerritories[territoriesState.indexOf(territory)] =
+                        {
+                          ...territory,
+                          date_start: e.format("YYYY-MM-DD"),
+                        };
+                      setCountryFormState({
+                        ...countryFormState,
+                        territories: modifiedTerritories,
+                      });
+                    }}
+                  />
+                  <DatePicker
+                    label="End"
+                    readOnly={editState == EditorState.Edit ? false : true}
+                    value={dayjs(territory.date_end)}
+                    onChange={(e: Event) => {
+                      const modifiedTerritories = [...territoriesState];
+                      modifiedTerritories[territoriesState.indexOf(territory)] =
+                        {
+                          ...territory,
+                          date_end: e.format("YYYY-MM-DD"),
+                        };
+                      setCountryFormState({
+                        ...countryFormState,
+                        territories: modifiedTerritories,
+                      });
+                    }}
+                  />
+                </ListItem>
+                <ListItem disablePadding>
+                  <ListItemIcon>
+                    <Checkbox
+                      edge="start"
+                      checked={checkboxState}
+                      tabIndex={-1}
+                      onChange={(e) => {
+                        const terr =
+                          viewerRef.current.cesiumElement.dataSources.getByName(
+                            countryFormState.name_eng
+                          )[0];
+                        terr.show = false;
+                        // el.show = !checkboxState
+                        checkboxState = !checkboxState;
+                      }}
+                    />
+                    <IconButton edge="start">
+                      <CenterFocusWeakIcon />
+                    </IconButton>
+                  </ListItemIcon>
+                  <ListItemText>Territory polygon</ListItemText>
+                </ListItem>
+                <Divider />
+              </React.Fragment>
             );
           })}
         </List>
@@ -336,6 +358,7 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
   };
 
   const renderViewer = () => {
+    const fillColor = Color.fromAlpha(Color.DARKBLUE, 0.4);
     const viewerProps = {
       full: false,
       timeline: false,
@@ -358,21 +381,24 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
           height: "100%",
         }}
       >
-        <GeoJsonDataSource
-          data={
-            countryFormState.territories ? countryFormState.territories[0]?.geometry : null
-          }
-          name={country?.name_eng}
-          onLoad={(g) => {
-            viewerRef.current.cesiumElement.zoomTo(g);
-            g.entities.values.map((e) => {
-              e.name = countryFormState.name_eng;
-            });
-          }}
-          strokeWidth={0.9}
-          stroke={Color.WHITE}
-          fill={Color.fromAlpha(Color.DARKBLUE, 0.4)}
-        />
+        {territoriesState.map((territory) => {
+          return (
+            <GeoJsonDataSource
+              key={territory?.uid}
+              data={territory.geometry}
+              name={countryFormState?.name_eng}
+              onLoad={(g) => {
+                viewerRef.current.cesiumElement.zoomTo(g);
+                g.entities.values.map((e) => {
+                  e.name = countryFormState.name_eng;
+                });
+              }}
+              strokeWidth={0.9}
+              stroke={Color.WHITE}
+              fill={fillColor}
+            />
+          );
+        })}
       </Viewer>
     );
   };
@@ -394,7 +420,7 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
       <h1 className="text-3xl font-bold">
         <span className="break-words">{countryFormState?.name_eng}</span>
         <span className="block text-lg">
-          {dayjs(country?.founded_at).format("YYYY")}-
+          {dayjs(countryFormState?.founded_at).format("YYYY")}-
           {countryFormState?.dissolved_at
             ? dayjs(countryFormState.dissolved_at).format("YYYY")
             : "Unknown"}

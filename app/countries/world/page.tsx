@@ -86,7 +86,6 @@ export default function Page() {
     <>
       <Viewer {...viewerProps}>
         <div
-          className="text-3xl font-bold"
           style={{
             position: "absolute",
             top: "0",
@@ -96,12 +95,6 @@ export default function Page() {
           }}
         >
           <div className="sidebar">
-            <IconButton onClick={() => console.log("route to menu")}>
-              <MenuIcon className="text-white" />
-            </IconButton>
-            <IconButton onClick={() => router.push("/countries")}>
-              <ArrowBackIcon className="text-white" />
-            </IconButton>
             <h1 className="text-white text-3xl">World map</h1>
             {/* needs a custom-made component to handle BC dates and more */}
             <DatePicker
@@ -121,20 +114,6 @@ export default function Page() {
                 onLoad={(g) => {
                   g.entities.values.map((e) => {
                     e.name = country.name_eng;
-                    e.properties = new PropertyBag({
-                      name_zeit: country.name_zeit,
-                      founded_at: country.founded_at,
-                      dissolved_at: country.dissolved_at,
-                      uid: country.uid,
-                    });
-                    e.label = new LabelGraphics({
-                      text: country.name_eng,
-                      show: true,
-                      fillColor: Color.BLACK,
-                      font: "24px Arial",
-                      scale: 1,
-                      style: LabelStyle.FILL,
-                    });
                   });
                 }}
                 strokeWidth={0.9}

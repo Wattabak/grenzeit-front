@@ -25,7 +25,6 @@ function useCountry(countryId: string) {
     `/api/grenzeit/countries/full/${countryId}`,
     fetcher
   );
-  if (isLoading) {return {country: {territories: []}, error, isLoading }}
   return {
     country: data,
     error,
@@ -53,7 +52,7 @@ export default function Page({ params }: CountryProps) {
         <ArrowBackIcon />
       </IconButton>
       <CountryView
-        country={typeof country != "undefined" ? country : { territories: [] }}
+        country={country}
         editorState={"View"}
         schema={schema}
       />

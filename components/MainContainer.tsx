@@ -69,7 +69,7 @@ const MainContainer = ({ ...props }: PropsWithChildren<MainContainerProps>) => {
           </ListItem>
         </List>
       </SidebarMenu>
-      <IconButton aria-label="menu" onClick={toggleDrawer(true)}>
+      <IconButton className="absolute" aria-label="menu" onClick={toggleDrawer(true)}>
         <MenuIcon />
       </IconButton>
       <div>{props.children}</div>

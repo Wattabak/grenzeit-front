@@ -55,3 +55,9 @@ export interface PaginatedResponse {
   size: number;
   pages: number;
 }
+export type SchemaType = {
+  anyOf: object[] | undefined;
+  format: string | undefined;
+  type: string | undefined;
+  description: string | undefined;
+};
