@@ -7,12 +7,10 @@ import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useRouter } from "next/navigation";
 import { Viewer, GeoJsonDataSource } from "resium";
 
-const CountryCreateView = () => {
+const CountryCreateView = ({...props}): JSX.Element => {
   const router = useRouter();
   const [name_eng, setname_eng] = useState("");
   const [name_zeit, setname_zeit] = useState("");
@@ -46,7 +44,6 @@ const CountryCreateView = () => {
         date_end: dissolved_at,
       },
     };
-    console.log(req_body);
     let json_body = JSON.stringify(req_body);
     try {
       const response = await fetch("/api/grenzeit/countries/", {
@@ -58,12 +55,10 @@ const CountryCreateView = () => {
         body: json_body,
       });
       if (!response.ok) {
-        console.log(response.status);
         throw new Error("something went wrong with POST request");
       }
       router.push("/countries");
     } catch (error) {
-      console.log(error);
       return;
     }
   };

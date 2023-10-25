@@ -1,52 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Cluster, Country } from "@/utils/types";
-import useSWR from "swr";
-import { IconButton } from "@mui/material";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import { GeoJsonDataSource, Viewer } from "resium";
 import { DatePicker } from "@mui/x-date-pickers";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MenuIcon from "@mui/icons-material/Menu";
-import { useRef } from 'react';
-import {
-  Color,
-  PropertyBag,
-  LabelGraphics,
-  LabelStyle,
-  Terrain,
-} from "cesium";
+import { useRef } from "react";
+import { Color } from "cesium";
 import dayjs, { Dayjs } from "dayjs";
-
-// const fetcher = (...args: any) => fetch(...args).then((res) => res.json());
-
-async function multiFetcher(urlArr: string[]) {
-  const f = (u: string) => fetch(u).then((r) => r.json());
-  return await Promise.all(urlArr.map(f)).catch((err) => console.log(err));
-}
-
-function useClusters(clusterNames: string[], showDate: dayjs.Dayjs) {
-  const { data, error, isLoading } = useSWR<Country[], Error>(
-    clusterNames.map(
-      (n) =>
-        `/api/grenzeit/countries/world/${n}?show_date=${
-          showDate.toISOString().split("T")[0]
-        }`
-    ),
-    multiFetcher
-  );
-
-  return {
-    countries: data?.flat(),
-    error,
-    isLoading,
-  };
-}
+import { useWorldCountries } from "@/utils/hooks";
 
 export default function Page() {
-  const [showDate, setShowDate] = useState(dayjs("2000-05-05"));
-  const viewerRef = useRef();
+  const [showDate, setShowDate] = useState<Dayjs | null>(dayjs("2000-05-05"));
+  const viewerRef = useRef(null);
   const clusterNames = [
     "Europe",
     "Asia",
@@ -58,9 +22,7 @@ export default function Page() {
     // "Australia",
   ];
 
-  const { countries, error, isLoading } = useClusters(clusterNames, showDate);
-
-  const router = useRouter();
+  const countries = useWorldCountries(clusterNames, showDate);
 
   const viewerProps = {
     full: true,
@@ -76,9 +38,9 @@ export default function Page() {
   };
 
   function handleDateChange(newDate: Dayjs | null) {
-    viewerRef?.current?.cesiumElement.dataSources.removeAll()
+    viewerRef?.current?.cesiumElement?.dataSources.removeAll();
     // this sucks, but I dont know how to perform this when a rerender is required
-    // A proper way would be - whenever the array of counties changes, update accordingly, i.e follow react in rerendering 
+    // A proper way would be - whenever the array of counties changes, update accordingly, i.e follow react in rerendering
     // perhaps, I can create a onRemove hook attached to GeoJSONdatasource that would also remove the element from the viewer
     setShowDate(newDate);
   }
@@ -105,24 +67,24 @@ export default function Page() {
             />
           </div>
         </div>
-        {
-          countries?.map((country) => (
-            <React.Fragment key={country.uid}>
-              <GeoJsonDataSource
-                name={country?.name_eng}
-                data={country.territory?.geometry ? country.territory.geometry : null}
-                onLoad={(g) => {
-                  g.entities.values.map((e) => {
-                    e.name = country.name_eng;
-                  });
-                }}
-                strokeWidth={0.9}
-                stroke={Color.WHITE}
-                fill={Color.fromRandom()}
-              />
-            </React.Fragment>
-          ))
-        }
+        {countries?.map((country) => (
+          <React.Fragment key={country.uid}>
+            <GeoJsonDataSource
+              name={country?.name_eng}
+              data={
+                country.territory?.geometry ? country.territory.geometry : null
+              }
+              onLoad={(g) => {
+                g.entities.values.map((e) => {
+                  e.name = country.name_eng;
+                });
+              }}
+              strokeWidth={0.9}
+              stroke={Color.WHITE}
+              fill={Color.fromRandom()}
+            />
+          </React.Fragment>
+        ))}
       </Viewer>
     </>
   );

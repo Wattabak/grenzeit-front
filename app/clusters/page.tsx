@@ -1,31 +1,27 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { Cluster } from "@/utils/types";
 import useSWR from "swr";
 import { GeoJsonDataSource, Viewer } from "resium";
 import { Color } from "cesium";
+import { singleFetcher } from "@/utils/fetchers";
 
 interface ClusterListResponse {
   clusters: Cluster[];
 }
 
-const fetcher = (...args: any) =>
-  fetch(...args)
-    .then((res) => res.json())
-    .catch((e) => console.error(e));
-
-function useClusters() {
-  const { data, error, isLoading } = useSWR<ClusterListResponse, Error>(
+function useClusters(): ClusterListResponse {
+  const { data, error } = useSWR<ClusterListResponse>(
     `/api/grenzeit/geometries/clusters/`,
-    fetcher
+    singleFetcher
   );
 
-  return {
-    clusters: data,
-    error,
-    isLoading,
-  };
+  if (!data) {
+    return { clusters: [] } as ClusterListResponse;
+  }
+
+  return data;
 }
 
 interface ClusterListProps {
@@ -35,9 +31,9 @@ interface ClusterListProps {
 }
 
 export default function Page({ params }: ClusterListProps) {
-  const { clusters, error, isLoading } = useClusters();
+  const clusters = useClusters();
 
-  const viewerRef = useRef();
+  const viewerRef = useRef(null);
 
   const viewerProps = {
     full: true,

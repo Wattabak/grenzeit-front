@@ -19,6 +19,7 @@ import {
   ListItemText,
   Modal,
   TextField,
+  TextFieldProps,
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -26,57 +27,85 @@ import { useRef } from "react";
 import SaveIcon from "@mui/icons-material/Save";
 import { Viewer, GeoJsonDataSource } from "resium";
 import { Color, EntityCollection } from "cesium";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import ClearIcon from "@mui/icons-material/Clear";
 import { DatePicker } from "@mui/x-date-pickers";
 import { SchemaType } from "@/utils/types";
-
-const EditorState = {
-  Edit: "Edit",
-  View: "View",
-  New: "New",
-};
+import { EditorState } from "@/utils/types";
+import { ModelSchema } from "@/utils/types";
+import { DATE_FORMAT } from "@/utils/constants";
 
 type CountryViewProps = {
   country: FullCountry;
-  schema: {
-    properties: {
-      [key: string]: SchemaType;
-    };
-    required: string[];
-  };
-  editorState: typeof EditorState;
+  schema: ModelSchema;
+  editorState: EditorState;
 };
 
-const extractType = (schema: SchemaType) => {
-  const multipleOptions = schema?.anyOf?.reduce((total, el) => {
-    switch (true) {
-      case total == "date":
-        return "date";
-      case el?.format == "date":
-        return "date";
-      case el?.format == "date-time":
-        return "date";
-      case el?.type == "string":
-        return "string";
-    }
-  });
-  if (schema.format) {
+const extractType = (schema: SchemaType | undefined) => {
+  const multipleOptions = schema?.anyOf?.reduce<string | undefined>(
+    (total, el) => {
+      switch (true) {
+        case total == "date":
+          return "date";
+        case el?.format == "date":
+          return "date";
+        case el?.format == "date-time":
+          return "date";
+        case el?.type == "string":
+          return "string";
+      }
+      return "string";
+    },
+    "string"
+  );
+
+  if (typeof schema == "undefined") {
+    return "string";
+  }
+
+  if (schema?.format) {
     return schema.format;
   }
-  return schema.type ? schema.type : multipleOptions;
+
+  return schema?.type ? schema.type : multipleOptions;
 };
 
-const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
-  const [countryFormState, setCountryFormState] = useState<FullCountry>({} as FullCountry);
+interface TerritoryElementsProps extends Territory {
+  uid: string;
+  show: boolean;
+  cesiumEntityid?: string;
+}
+
+const CountryView = ({
+  country,
+  schema,
+  editorState,
+}: CountryViewProps): JSX.Element => {
+  const [countryFormState, setCountryFormState] = useState<FullCountry>(
+    {} as FullCountry
+  );
   const [territoriesState, setTerritoriesState] = useState([] as Territory[]);
-  const [territoryElementsState, territoryElementsUpdateEvent] = useReducer((prev, next) => {
-    return { ...prev, ...next }
-  }, { title: '', description: '', attendees: [] })
+  const [territoryElementsState, territoryElementsUpdateEvent] = useReducer(
+    (
+      prev: Record<string, TerritoryElementsProps>,
+      next: TerritoryElementsProps
+    ) => {
+      const _ = { ...prev };
+      _[next.uid] = { ...next };
+      return _;
+    },
+    {}
+  );
 
   useEffect(() => {
     setCountryFormState({ ...country });
     setTerritoriesState(country ? [...country.territories] : []);
+    country.territories.forEach((territory, index) => {
+      territoryElementsUpdateEvent({
+        ...territory,
+        show: index == 0 ? true : false,
+      } as TerritoryElementsProps);
+    });
   }, [country, schema]);
 
   const [editState, setEditState] = useState(
@@ -85,7 +114,8 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
   const [deleteModalState, setDeleteModalState] = useState(false);
 
   const router = useRouter();
-  const viewerRef = useRef();
+  const viewerRef = useRef(null);
+
   const handleDelete = async () => {
     await fetch(`/api/grenzeit/countries/${countryFormState.uid}/`, {
       method: "DELETE",
@@ -110,7 +140,7 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({...countryFormState}),
+        body: JSON.stringify({ ...countryFormState }),
       }
     );
 
@@ -137,36 +167,35 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
     return (
       <>
         <h2 className="text-2xl font-bold">{headerText}</h2>
-          <Stack spacing={3}>
-            {Object.entries(countryFormState).map(([k, value]) => {
-              if (hiddenFields.includes(k)) {
-                return;
-              }
-              const fieldLabel = schema?.properties[k].description
-                ? schema?.properties[k].description
-                : k;
-              const fieldArgs = {
-                type: inputType(extractType(schema?.properties[k])),
-                id: k,
-                disabled: editState == EditorState.View,
-                label: fieldLabel,
-                variant: "standard",
-                fullWidth: true,
-                clearable: "true",
-                required: schema?.required.includes(k),
-                InputProps: {
-                  readOnly: editState == EditorState.View,
-                },
-                onChange: (e: Event) =>
-                  setCountryFormState({
-                    ...countryFormState,
-                    [k]: e.target.value,
-                  }),
-                value: value ? value : "None",
-              };
-              return <TextField key={k} {...fieldArgs} />;
-            })}
-          </Stack>
+        <Stack spacing={3}>
+          {Object.entries(countryFormState).map(([k, value]) => {
+            if (hiddenFields.includes(k)) {
+              return;
+            }
+            const fieldLabel = schema?.properties[k]
+              ? schema?.properties[k].description
+              : k;
+            const fieldArgs: TextFieldProps = {
+              type: inputType(extractType(schema?.properties[k])),
+              id: k,
+              disabled: editState == EditorState.View,
+              label: fieldLabel,
+              variant: "standard",
+              fullWidth: true,
+              required: schema ? schema.required.includes(k) : false,
+              InputProps: {
+                readOnly: editState == EditorState.View,
+              },
+              onChange: (e: any) =>
+                setCountryFormState({
+                  ...countryFormState,
+                  [k]: e.target?.value,
+                }),
+              value: value ? value : "None",
+            };
+            return <TextField key={k} {...fieldArgs} />;
+          })}
+        </Stack>
       </>
     );
   };
@@ -269,7 +298,6 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
         <h2 className="text-2xl font-bold">{headerText}</h2>
         <List>
           {territoriesState.map((territory: Territory) => {
-            let checkboxState = false;
             return (
               <React.Fragment key={territory.uid}>
                 <h3 className="text-lg">
@@ -284,12 +312,14 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
                     label="Start"
                     readOnly={editState == EditorState.Edit ? false : true}
                     value={dayjs(territory.date_start)}
-                    onChange={(e: dayjs.Dayjs) => {
+                    onChange={(e: dayjs.Dayjs | null) => {
                       const modifiedTerritories = [...territoriesState];
                       modifiedTerritories[territoriesState.indexOf(territory)] =
                         {
                           ...territory,
-                          date_start: e.format("YYYY-MM-DD"),
+                          date_start: e
+                            ? e.format(DATE_FORMAT)
+                            : territory.date_start,
                         };
                       setCountryFormState({
                         ...countryFormState,
@@ -301,12 +331,14 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
                     label="End"
                     readOnly={editState == EditorState.Edit ? false : true}
                     value={dayjs(territory.date_end)}
-                    onChange={(e: Event) => {
+                    onChange={(e: Dayjs | null) => {
                       const modifiedTerritories = [...territoriesState];
                       modifiedTerritories[territoriesState.indexOf(territory)] =
                         {
                           ...territory,
-                          date_end: e.format("YYYY-MM-DD"),
+                          date_end: e
+                            ? e.format(DATE_FORMAT)
+                            : territory.date_end,
                         };
                       setCountryFormState({
                         ...countryFormState,
@@ -319,19 +351,33 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
                   <ListItemIcon>
                     <Checkbox
                       edge="start"
-                      checked={checkboxState}
+                      checked={territoryElementsState[territory.uid].show}
                       tabIndex={-1}
-                      onChange={(e) => {
-                        const terr =
-                          viewerRef.current.cesiumElement.dataSources.getByName(
-                            countryFormState.name_eng
-                          )[0];
-                        terr.show = false;
-                        // el.show = !checkboxState
-                        checkboxState = !checkboxState;
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        territoryElementsUpdateEvent({
+                          ...territoryElementsState[territory.uid],
+                          show: e.target.checked,
+                        } as TerritoryElementsProps);
+                        viewerRef.current.cesiumElement.dataSources
+                          .getByName(countryFormState.name_eng)
+                          .map(
+                            (t) =>
+                              (t.show =
+                                !territoryElementsState[territory.uid].show)
+                          );
                       }}
                     />
-                    <IconButton edge="start">
+                    <IconButton
+                      edge="start"
+                      onClick={(e) => {
+                        const g =
+                          viewerRef.current.cesiumElement.dataSources.getByName(
+                            countryFormState.name_eng
+                          );
+                        console.log(g)
+                        viewerRef.current.cesiumElement.zoomTo(g[0].entities);
+                      }}
+                    >
                       <CenterFocusWeakIcon />
                     </IconButton>
                   </ListItemIcon>
@@ -384,7 +430,7 @@ const CountryView = ({ country, schema, editorState }: CountryViewProps) => {
         {territoriesState.map((territory) => {
           return (
             <GeoJsonDataSource
-              key={territory?.uid}
+              key={territory.uid}
               data={territory.geometry}
               name={countryFormState?.name_eng}
               onLoad={(g) => {
