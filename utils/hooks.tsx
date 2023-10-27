@@ -10,7 +10,13 @@ export function useFullCountry(countryId: string) {
     singleFetcher
   );
   if (!data) {
-    return { territories: [] } as FullCountry;
+    return {
+      territories: [],
+      uid: "",
+      founded_at: "",
+      name_zeit: "",
+      name_eng: "",
+    } as FullCountry;
   }
 
   return data;

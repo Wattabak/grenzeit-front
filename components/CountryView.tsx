@@ -7,6 +7,12 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 import { FullCountry, Territory } from "@/utils/types";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import DataObjectIcon from "@mui/icons-material/DataObject";
+import { Viewer as CViewer } from "cesium";
 import {
   Box,
   Button,
@@ -17,6 +23,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Modal,
   TextField,
   TextFieldProps,
@@ -25,7 +33,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import SaveIcon from "@mui/icons-material/Save";
-import { Viewer, GeoJsonDataSource } from "resium";
+import { Viewer, GeoJsonDataSource, CesiumComponentRef } from "resium";
 import { Color, EntityCollection } from "cesium";
 import dayjs, { Dayjs } from "dayjs";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -34,6 +42,8 @@ import { SchemaType } from "@/utils/types";
 import { EditorState } from "@/utils/types";
 import { ModelSchema } from "@/utils/types";
 import { DATE_FORMAT } from "@/utils/constants";
+import GeoJSONViewer from "./GeojsonViewer";
+import { GeoJsonObject } from "geojson";
 
 type CountryViewProps = {
   country: FullCountry;
@@ -41,7 +51,7 @@ type CountryViewProps = {
   editorState: EditorState;
 };
 
-const extractType = (schema: SchemaType | undefined) => {
+const extractType = (schema: SchemaType) => {
   const multipleOptions = schema?.anyOf?.reduce<string | undefined>(
     (total, el) => {
       switch (true) {
@@ -70,7 +80,15 @@ const extractType = (schema: SchemaType | undefined) => {
   return schema?.type ? schema.type : multipleOptions;
 };
 
-interface TerritoryElementsProps extends Territory {
+// const handleTerritoryUpload = (e: any) => {
+//   var reader = new FileReader();
+//   reader.onload = (ev: ProgressEvent<FileReader>) => {
+//     setSelectedFile(JSON.parse(ev.target.result));
+//   };
+//   reader.readAsText(e.target.files[0]);
+// };
+
+interface TerritoryProps extends Territory {
   uid: string;
   show: boolean;
   cesiumEntityid?: string;
@@ -81,40 +99,60 @@ const CountryView = ({
   schema,
   editorState,
 }: CountryViewProps): JSX.Element => {
+  const [editState, setEditState] = useState(
+    editorState ? editorState : EditorState.View
+  );
+
   const [countryFormState, setCountryFormState] = useState<FullCountry>(
     {} as FullCountry
   );
-  const [territoriesState, setTerritoriesState] = useState([] as Territory[]);
-  const [territoryElementsState, territoryElementsUpdateEvent] = useReducer(
+  const [territoriesState, territoriesUpdateEvent] = useReducer(
     (
-      prev: Record<string, TerritoryElementsProps>,
-      next: TerritoryElementsProps
+      prev: Record<string, TerritoryProps>,
+      [next, action]: [TerritoryProps, string] | [TerritoryProps]
     ) => {
       const _ = { ...prev };
-      _[next.uid] = { ...next };
+
+      switch (action) {
+        case "delete":
+          delete _[next.uid];
+          break;
+        case "add":
+          _[next.uid] = { ...next };
+          break;
+        case "reset":
+          return {};
+        default:
+          _[next.uid] = { ...next };
+          break;
+      }
       return _;
     },
     {}
   );
-
+  const removeTerritoryElement = (uid: string) => {
+    const toRemove = territoriesState[uid];
+    toRemove
+      ? territoriesUpdateEvent([toRemove, "delete"])
+      : console.log(`Territory ${uid} not found`);
+  };
   useEffect(() => {
     setCountryFormState({ ...country });
-    setTerritoriesState(country ? [...country.territories] : []);
+    territoriesUpdateEvent([{} as TerritoryProps, "reset"]);
     country.territories.forEach((territory, index) => {
-      territoryElementsUpdateEvent({
-        ...territory,
-        show: index == 0 ? true : false,
-      } as TerritoryElementsProps);
+      territoriesUpdateEvent([
+        {
+          ...territory,
+          show: index == 0 ? true : false,
+        } as TerritoryProps,
+      ]);
     });
-  }, [country, schema]);
+  }, [country, schema, editState]);
 
-  const [editState, setEditState] = useState(
-    editorState ? editorState : EditorState.View
-  );
   const [deleteModalState, setDeleteModalState] = useState(false);
 
   const router = useRouter();
-  const viewerRef = useRef(null);
+  const viewerRef = useRef<null | CesiumComponentRef<CViewer>>(null);
 
   const handleDelete = async () => {
     await fetch(`/api/grenzeit/countries/${countryFormState.uid}/`, {
@@ -123,32 +161,36 @@ const CountryView = ({
     router.push(`countries/`);
   };
 
-  const handleEditSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const handleFullCountrySubmit = async (
+    country: FullCountry,
+    action?: "PUT" | "POST" | undefined
+  ) => {
+    const verb = action ? action : "PUT";
 
-    if (
-      !countryFormState.name_eng ||
-      !countryFormState.name_zeit ||
-      !countryFormState.founded_at
-    ) {
+    // TODO: go over schema, check whats required before sending request
+    if (!country.name_eng || !country.name_zeit || !country.founded_at) {
       throw new Error("Yo these should be filled");
     }
-    const response = await fetch(
-      `/api/grenzeit/countries/${countryFormState.uid}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...countryFormState }),
-      }
-    );
+    const json_body = JSON.stringify(country);
+    const url =
+      verb == "PUT"
+        ? `/api/grenzeit/countries/${country.uid}`
+        : "/api/grenzeit/countries/";
+    const response = await fetch(url, {
+      method: verb,
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": json_body.length.toString(),
+      },
+      body: json_body,
+    });
 
     if (!response.ok) {
-      throw new Error("something went wrong with PUT request");
+      throw new Error(`something went wrong with ${verb} request`);
     }
 
     setEditState(EditorState.View);
+    return response.text();
   };
 
   const renderProperties = () => {
@@ -162,47 +204,58 @@ const CountryView = ({
       datetime: "date",
       array: "text",
     };
-    const inputType = (schemaType: string) =>
+    const inputType = (schemaType: string): string =>
       (schemaInputMap as any)[schemaType];
     return (
       <>
         <h2 className="text-2xl font-bold">{headerText}</h2>
         <Stack spacing={3}>
-          {Object.entries(countryFormState).map(([k, value]) => {
-            if (hiddenFields.includes(k)) {
-              return;
+          {Object.entries(schema?.properties).map(
+            ([propertyName, propertySchema]) => {
+              if (hiddenFields.includes(propertyName)) {
+                return;
+              }
+              const fieldLabel = propertySchema?.description || propertyName;
+              const fieldValue =
+                countryFormState[propertyName as keyof FullCountry];
+              const fieldArgs: TextFieldProps = {
+                type: inputType(extractType(propertySchema) || "text"),
+                id: propertyName,
+                disabled: editState == EditorState.View,
+                label: fieldLabel,
+                variant: "standard",
+                fullWidth: true,
+                required: schema
+                  ? schema.required.includes(propertyName)
+                  : false,
+                InputProps: {
+                  readOnly: editState == EditorState.View,
+                },
+                onChange: (e: any) =>
+                  setCountryFormState({
+                    ...countryFormState,
+                    [propertyName]: e.target?.value,
+                  }),
+                value: fieldValue || "",
+                placeholder: typeof fieldValue == "string" ? fieldValue : "",
+              };
+              return (
+                <TextField
+                  key={propertyName}
+                  {...fieldArgs}
+                  InputLabelProps={{ shrink: true }}
+                />
+              );
             }
-            const fieldLabel = schema?.properties[k]
-              ? schema?.properties[k].description
-              : k;
-            const fieldArgs: TextFieldProps = {
-              type: inputType(extractType(schema?.properties[k])),
-              id: k,
-              disabled: editState == EditorState.View,
-              label: fieldLabel,
-              variant: "standard",
-              fullWidth: true,
-              required: schema ? schema.required.includes(k) : false,
-              InputProps: {
-                readOnly: editState == EditorState.View,
-              },
-              onChange: (e: any) =>
-                setCountryFormState({
-                  ...countryFormState,
-                  [k]: e.target?.value,
-                }),
-              value: value ? value : "None",
-            };
-            return <TextField key={k} {...fieldArgs} />;
-          })}
+          )}
         </Stack>
       </>
     );
   };
   const renderButtons = () => {
-    if (editState == EditorState.Edit) {
-      return (
-        <Stack spacing={1} direction="row" justifyContent="flex-start">
+    const buttonsMap = {
+      [EditorState.Edit]: (
+        <>
           <Button
             variant="contained"
             startIcon={<ClearIcon />}
@@ -216,7 +269,7 @@ const CountryView = ({
             variant="contained"
             startIcon={<SaveIcon />}
             type="submit"
-            onClick={handleEditSubmit}
+            onClick={() => handleFullCountrySubmit(countryFormState, "PUT")}
           >
             Save
           </Button>
@@ -228,11 +281,10 @@ const CountryView = ({
           >
             Delete
           </Button>
-        </Stack>
-      );
-    } else if (editState == EditorState.View) {
-      return (
-        <Stack spacing={1} direction="row" justifyContent="flex-start">
+        </>
+      ),
+      [EditorState.View]: (
+        <>
           <Button
             variant="contained"
             startIcon={<EditOutlinedIcon />}
@@ -246,7 +298,7 @@ const CountryView = ({
             variant="contained"
             startIcon={<AddOutlinedIcon />}
             onClick={() => {
-              setEditState(EditorState.New);
+              router.push("/countries/add");
             }}
           >
             Create
@@ -259,17 +311,20 @@ const CountryView = ({
           >
             Delete
           </Button>
-        </Stack>
-      );
-    } else {
-      return (
-        <Stack spacing={1} direction="row" justifyContent="flex-start">
+        </>
+      ),
+      [EditorState.New]: (
+        <>
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={() => {
-              // save form state, route to new page
-              setEditState(EditorState.View);
+              const createdUid = handleFullCountrySubmit(
+                countryFormState,
+                "POST"
+              );
+              // route to created country uid
+              router.push(`/countries/${createdUid}`);
             }}
           >
             Save
@@ -278,52 +333,94 @@ const CountryView = ({
             variant="contained"
             startIcon={<ClearIcon />}
             onClick={() => {
-              // clear form state here, stay in new
+              setEditState(EditorState.New);
+              setCountryFormState({} as FullCountry);
+              territoriesUpdateEvent([{} as TerritoryProps, "reset"]);
             }}
           >
             Clear
           </Button>
-        </Stack>
-      );
-    }
+        </>
+      ),
+    };
+
+    return (
+      <Stack spacing={1} direction="row" justifyContent="flex-start">
+        {buttonsMap[editState]}
+      </Stack>
+    );
   };
   const renderTerritories = () => {
     const headerText =
       editState == EditorState.Edit
         ? "Edit Territories"
         : "Territorial changes";
-
+    const removeElement = (uid: string) => {
+      if (!(editState == EditorState.View)) {
+        return (
+          <IconButton
+            edge="start"
+            aria-label="remove"
+            onClick={() => removeTerritoryElement(uid)}
+          >
+            <RemoveIcon />
+          </IconButton>
+        );
+      } else {
+        return <></>;
+      }
+    };
     return (
-      <>
+      <div className="pb-10">
         <h2 className="text-2xl font-bold">{headerText}</h2>
-        <List>
-          {territoriesState.map((territory: Territory) => {
+        <List disablePadding>
+          {Object.entries(territoriesState).map((element, index) => {
+            const [uid, territory] = element;
             return (
-              <React.Fragment key={territory.uid}>
-                <h3 className="text-lg">
-                  1. {dayjs(territory.date_start).format("YYYY")}
-                  {" - "}
-                  {territory.date_end
-                    ? dayjs(territory.date_end).format("YYYY")
-                    : "Unknown"}
-                </h3>
+              <div key={uid}>
+                <ListItem disablePadding disableGutters>
+                  <ListItemText>
+                    <h3 className="text-lg">
+                      {removeElement(uid)}
+                      <span>
+                        {`${index + 1}. `}
+                        {dayjs(territory?.date_start).format("YYYY") || "Unknown"}
+                        {" - "}
+                        {dayjs(territory?.date_end).format("YYYY") || "Unknown"}
+                      </span>
+                    </h3>
+                  </ListItemText>
+                  <IconButton
+                    edge="end"
+                    aria-label="object view"
+                    onClick={() =>
+                      console.log(
+                        "TODO: transform territory element to json object field"
+                      )
+                    }
+                  >
+                    <DataObjectIcon />
+                  </IconButton>
+                </ListItem>
+
                 <ListItem className="space-x-2" disablePadding>
                   <DatePicker
                     label="Start"
                     readOnly={editState == EditorState.Edit ? false : true}
                     value={dayjs(territory.date_start)}
                     onChange={(e: dayjs.Dayjs | null) => {
-                      const modifiedTerritories = [...territoriesState];
-                      modifiedTerritories[territoriesState.indexOf(territory)] =
+                      const formattedDate = e
+                        ? e.format(DATE_FORMAT)
+                        : territory.date_start;
+                      territoriesUpdateEvent([
                         {
-                          ...territory,
-                          date_start: e
-                            ? e.format(DATE_FORMAT)
-                            : territory.date_start,
-                        };
+                          ...territoriesState[territory.uid],
+                          date_start: formattedDate,
+                        } as TerritoryProps,
+                      ]);
                       setCountryFormState({
                         ...countryFormState,
-                        territories: modifiedTerritories,
+                        territories: Object.values(territoriesState),
                       });
                     }}
                   />
@@ -332,17 +429,16 @@ const CountryView = ({
                     readOnly={editState == EditorState.Edit ? false : true}
                     value={dayjs(territory.date_end)}
                     onChange={(e: Dayjs | null) => {
-                      const modifiedTerritories = [...territoriesState];
-                      modifiedTerritories[territoriesState.indexOf(territory)] =
+                      const formattedDate = e?.format(DATE_FORMAT) || territory.date_end;
+                      territoriesUpdateEvent([
                         {
-                          ...territory,
-                          date_end: e
-                            ? e.format(DATE_FORMAT)
-                            : territory.date_end,
-                        };
+                          ...territoriesState[territory.uid],
+                          date_end: formattedDate,
+                        } as TerritoryProps,
+                      ]);
                       setCountryFormState({
                         ...countryFormState,
-                        territories: modifiedTerritories,
+                        territories: Object.values(territoriesState),
                       });
                     }}
                   />
@@ -351,44 +447,113 @@ const CountryView = ({
                   <ListItemIcon>
                     <Checkbox
                       edge="start"
-                      checked={territoryElementsState[territory.uid].show}
+                      checked={territoriesState[uid].show}
                       tabIndex={-1}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        territoryElementsUpdateEvent({
-                          ...territoryElementsState[territory.uid],
-                          show: e.target.checked,
-                        } as TerritoryElementsProps);
-                        viewerRef.current.cesiumElement.dataSources
+                        territoriesUpdateEvent([
+                          {
+                            ...territoriesState[uid],
+                            show: e.target.checked,
+                          } as TerritoryProps,
+                        ]);
+                        viewerRef?.current?.cesiumElement?.dataSources
                           .getByName(countryFormState.name_eng)
-                          .map(
-                            (t) =>
-                              (t.show =
-                                !territoryElementsState[territory.uid].show)
-                          );
+                          .map((t) => (t.show = !territoriesState[uid].show));
                       }}
                     />
                     <IconButton
                       edge="start"
-                      onClick={(e) => {
+                      onClick={() => {
                         const g =
-                          viewerRef.current.cesiumElement.dataSources.getByName(
+                          viewerRef?.current?.cesiumElement?.dataSources.getByName(
                             countryFormState.name_eng
                           );
-                        console.log(g)
-                        viewerRef.current.cesiumElement.zoomTo(g[0].entities);
+                        g
+                          ? viewerRef?.current?.cesiumElement?.zoomTo(
+                              g[0].entities
+                            )
+                          : console.log(
+                              "No requested entity in the viewer namespace"
+                            );
                       }}
                     >
                       <CenterFocusWeakIcon />
                     </IconButton>
                   </ListItemIcon>
                   <ListItemText>Territory polygon</ListItemText>
+                  <IconButton
+                    edge="end"
+                    onClick={() =>
+                      console.log("TODO: download territory as geojson")
+                    }
+                  >
+                    <FileDownloadIcon />
+                  </IconButton>
+                  <IconButton
+                    edge="end"
+                    onClick={() =>
+                      console.log("TODO: smol menu on territories")
+                    }
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
                 </ListItem>
                 <Divider />
-              </React.Fragment>
+                <Menu
+                  id="basic-menu"
+                  anchorEl={null}
+                  open={false}
+                  onClose={() => console.log("close menu")}
+                  MenuListProps={{
+                    "aria-labelledby": "basic-button",
+                  }}
+                >
+                  <MenuItem onClick={() => console.log("close menu")}>
+                    Profile
+                  </MenuItem>
+                  <MenuItem onClick={() => console.log("close menu")}>
+                    My account
+                  </MenuItem>
+                  <MenuItem onClick={() => console.log("close menu")}>
+                    Logout
+                  </MenuItem>
+                </Menu>
+              </div>
             );
           })}
         </List>
-      </>
+        {(() => {
+          if (!(editState == EditorState.View)) {
+            return (
+              <ListItem disablePadding>
+                <ListItemIcon>
+                  <Button
+                    aria-label="add Territory"
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                      territoriesUpdateEvent([
+                        {
+                          uid: `new_${
+                            Object.keys(territoriesState).length + 1
+                          }`,
+                          show: false,
+                          geometry: {},
+                          date_start: "",
+                          date_end: null,
+                        } as TerritoryProps,
+                      ]);
+                    }}
+                  >
+                    Add Territory
+                  </Button>
+                </ListItemIcon>
+              </ListItem>
+            );
+          } else {
+            return <></>;
+          }
+        })()}
+      </div>
     );
   };
   const modalStyle = {
@@ -427,14 +592,17 @@ const CountryView = ({
           height: "100%",
         }}
       >
-        {territoriesState.map((territory) => {
+        {Object.values(territoriesState).map((territory) => {
+          if (!territory.geometry?.coordinates) {
+            return undefined;
+          }
           return (
             <GeoJsonDataSource
               key={territory.uid}
               data={territory.geometry}
               name={countryFormState?.name_eng}
               onLoad={(g) => {
-                viewerRef.current.cesiumElement.zoomTo(g);
+                viewerRef?.current?.cesiumElement?.zoomTo(g);
                 g.entities.values.map((e) => {
                   e.name = countryFormState.name_eng;
                 });
@@ -466,13 +634,11 @@ const CountryView = ({
       <h1 className="text-3xl font-bold">
         <span className="break-words">{countryFormState?.name_eng}</span>
         <span className="block text-lg">
-          {dayjs(countryFormState?.founded_at).format("YYYY")}-
-          {countryFormState?.dissolved_at
-            ? dayjs(countryFormState.dissolved_at).format("YYYY")
-            : "Unknown"}
+          {dayjs(countryFormState?.founded_at).format("YYYY") || "Unknown"}-
+          {dayjs(countryFormState?.dissolved_at).format("YYYY") || "Unknown"}
         </span>
       </h1>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 relative">
         <div className="col-span-1">
           {renderProperties()}
           {renderTerritories()}
@@ -490,6 +656,10 @@ const CountryView = ({
         >
           {renderViewer()}
         </div>
+        <GeoJSONViewer
+          geojson={{} as GeoJsonObject}
+          open={false}
+        ></GeoJSONViewer>
       </div>
     </>
   );

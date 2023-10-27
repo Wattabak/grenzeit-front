@@ -3,12 +3,11 @@
 import React from "react";
 import { EditorState } from "@/utils/types";
 
-import IconButton from "@mui/material/IconButton";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useRouter } from "next/navigation";
 import CountryView from "@/components/CountryView";
 import { useFullCountry } from "@/utils/hooks";
 import { useSchema } from "@/utils/hooks";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import { Link, Typography } from "@mui/material";
 
 interface CountryProps {
   params: {
@@ -17,15 +16,18 @@ interface CountryProps {
 }
 
 export default function Page({ params }: CountryProps) {
-  const router = useRouter();
-
   const country = useFullCountry(params.countryId);
   const schema = useSchema();
   return (
-    <div>
-      <IconButton onClick={() => router.push("/countries")}>
-        <ArrowBackIcon />
-      </IconButton>
+    <div className="py-10">
+      <div>
+        <Breadcrumbs aria-label="breadcrumb">
+          <Link underline="hover" color="inherit" href="/countries">
+            Countries
+          </Link>
+          <Typography color="text.primary">{country.name_eng}</Typography>
+        </Breadcrumbs>
+      </div>
       <CountryView
         country={country}
         editorState={EditorState.View}

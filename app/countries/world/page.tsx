@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { GeoJsonDataSource, Viewer } from "resium";
+import { CesiumComponentRef, GeoJsonDataSource, Viewer } from "resium";
 import { DatePicker } from "@mui/x-date-pickers";
 import { useRef } from "react";
 import { Color } from "cesium";
+import { Viewer as CViewer} from "cesium";
 import dayjs, { Dayjs } from "dayjs";
 import { useWorldCountries } from "@/utils/hooks";
 
 export default function Page() {
   const [showDate, setShowDate] = useState<Dayjs | null>(dayjs("2000-05-05"));
-  const viewerRef = useRef(null);
+  const viewerRef = useRef<null| CesiumComponentRef<CViewer>>(null);
   const clusterNames = [
     "Europe",
     "Asia",
@@ -51,7 +52,7 @@ export default function Page() {
           style={{
             position: "absolute",
             top: "0",
-            left: "0",
+            left: "40px",
             width: "25%",
             height: "100%",
           }}

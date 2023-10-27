@@ -69,9 +69,17 @@ const MainContainer = ({ ...props }: PropsWithChildren<MainContainerProps>) => {
           </ListItem>
         </List>
       </SidebarMenu>
-      <IconButton className="absolute" aria-label="menu" onClick={toggleDrawer(true)}>
-        <MenuIcon />
-      </IconButton>
+      <div className="fixed h-full z-50 bg-white">
+        <div className="flex flex-col items-center">
+          <IconButton
+            aria-label="menu"
+            onClick={toggleDrawer(true)}
+          >
+            <MenuIcon />
+          </IconButton>
+        </div>
+      </div>
+
       <div>{props.children}</div>
     </>
   );

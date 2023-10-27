@@ -3,9 +3,10 @@
 import React, { useRef } from "react";
 import { Cluster } from "@/utils/types";
 import useSWR from "swr";
-import { GeoJsonDataSource, Viewer } from "resium";
+import { CesiumComponentRef, GeoJsonDataSource, Viewer } from "resium";
 import { Color } from "cesium";
 import { singleFetcher } from "@/utils/fetchers";
+import { Viewer as CViewer } from "cesium";
 
 interface ClusterListResponse {
   clusters: Cluster[];
@@ -33,8 +34,7 @@ interface ClusterListProps {
 export default function Page({ params }: ClusterListProps) {
   const clusters = useClusters();
 
-  const viewerRef = useRef(null);
-
+  const viewerRef = useRef<null | CesiumComponentRef<CViewer>>(null);
   const viewerProps = {
     full: true,
     timeline: false,
