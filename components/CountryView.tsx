@@ -77,7 +77,7 @@ const extractType = (schema: SchemaType) => {
     return schema.format;
   }
 
-  return schema?.type ? schema.type : multipleOptions;
+  return schema?.type || multipleOptions;
 };
 
 // const handleTerritoryUpload = (e: any) => {
@@ -100,7 +100,7 @@ const CountryView = ({
   editorState,
 }: CountryViewProps): JSX.Element => {
   const [editState, setEditState] = useState(
-    editorState ? editorState : EditorState.View
+    editorState || EditorState.View
   );
 
   const [countryFormState, setCountryFormState] = useState<FullCountry>(
@@ -165,7 +165,7 @@ const CountryView = ({
     country: FullCountry,
     action?: "PUT" | "POST" | undefined
   ) => {
-    const verb = action ? action : "PUT";
+    const verb = action || "PUT";
 
     // TODO: go over schema, check whats required before sending request
     if (!country.name_eng || !country.name_zeit || !country.founded_at) {

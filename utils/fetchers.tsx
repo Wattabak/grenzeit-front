@@ -1,11 +1,14 @@
 import { Fetcher } from "swr";
+import { BareFetcher, FetcherResponse } from "swr/_internal";
 
-export const singleFetcher: Fetcher<any> = (args: RequestInfo | URL) =>
-  fetch(args)
+export const singleFetcher: Fetcher<any> = (args: RequestInfo | URL) => {
+  return fetch(args)
     .then((res) => res.json())
     .catch((e) => console.error(e));
+};
 
-export async function multiFetcher(urlArr: string[]): Promise<any> {
-  const f = (u: string) => fetch(u).then((r) => r.json());
-  return await Promise.all(urlArr.map(f)).catch((err) => console.log(err));
-}
+export const multiFetcher: BareFetcher<any[]> = (
+  urlArr: string[]
+) => {
+  return Promise.all(urlArr.map((url) => singleFetcher(url)));
+};

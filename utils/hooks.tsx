@@ -1,6 +1,6 @@
 import { Country, FullCountry, ModelSchema } from "@/utils/types";
 import { multiFetcher, singleFetcher } from "./fetchers";
-import useSWR from "swr";
+import useSWR, { Fetcher } from "swr";
 import { DATE_FORMAT } from "@/utils/constants";
 import { Dayjs } from "dayjs";
 
@@ -36,14 +36,12 @@ export function useSchema() {
 export function useWorldCountries(
   clusterNames: string[],
   showDate: Dayjs | null
-) {
+){
   const convertedDate = showDate ? showDate.format(DATE_FORMAT) : "";
-  const { data } = useSWR<Country[]>(
-    clusterNames.map(
-      (n) => `/api/grenzeit/countries/world/${n}?show_date=${convertedDate}`
-    ),
-    multiFetcher
+  const clusterMapped = clusterNames.map(
+    (n) => `/api/grenzeit/countries/world/${n}?show_date=${convertedDate}`
   );
+  const { data } = useSWR<Country[]>(clusterMapped, multiFetcher);
 
   if (!data) {
     return [];
