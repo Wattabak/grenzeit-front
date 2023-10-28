@@ -16,8 +16,21 @@ interface CountryProps {
 }
 
 export default function Page({ params }: CountryProps) {
-  const country = useFullCountry(params.countryId);
+  const { data: country, error } = useFullCountry(params.countryId);
   const schema = useSchema();
+  const content = () => {
+    if (error) {
+      return `${error?.status || ""} Not found`;
+    }
+    return (
+      <CountryView
+        country={country}
+        editorState={EditorState.View}
+        schema={schema}
+      />
+    );
+  };
+
   return (
     <div className="py-10">
       <div>
@@ -28,11 +41,8 @@ export default function Page({ params }: CountryProps) {
           <Typography color="text.primary">{country.name_eng}</Typography>
         </Breadcrumbs>
       </div>
-      <CountryView
-        country={country}
-        editorState={EditorState.View}
-        schema={schema}
-      />
+
+      {content()}
     </div>
   );
 }

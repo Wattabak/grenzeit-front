@@ -54,7 +54,7 @@ export default function Page({ params }: ClusterListProps) {
   return (
     <>
       <Viewer {...viewerProps}>
-      <ImageryLayer alpha={0.5} imageryProvider={imageryProvider} />
+      <ImageryLayer alpha={1} imageryProvider={imageryProvider} />
 
         <div
           className="text-3xl font-bold"

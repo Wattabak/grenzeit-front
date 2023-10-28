@@ -160,6 +160,18 @@ const CountryView = ({
       ? territoriesUpdateEvent([toRemove, "delete"])
       : console.log(`Territory ${uid} not found`);
   };
+  const clearState = ()=>{
+    setCountryFormState({ ...country });
+    territoriesUpdateEvent([{} as TerritoryProps, "reset"]);
+    country.territories.forEach((territory, index) => {
+      territoriesUpdateEvent([
+        {
+          ...territory,
+          show: index == 0,
+        } as TerritoryProps,
+      ]);
+    });
+  }
   useEffect(() => {
     setCountryFormState({ ...country });
     territoriesUpdateEvent([{} as TerritoryProps, "reset"]);
@@ -171,7 +183,7 @@ const CountryView = ({
         } as TerritoryProps,
       ]);
     });
-  }, [country, schema, editState]);
+  }, [country, schema]);
 
   const [deleteModalState, setDeleteModalState] = useState(false);
 
@@ -212,9 +224,7 @@ const CountryView = ({
     if (!response.ok) {
       throw new Error(`something went wrong with ${verb} request`);
     }
-
-    setEditState(EditorState.View);
-    return response.text();
+    return await response.text();
   };
 
   const renderProperties = () => {
@@ -282,6 +292,7 @@ const CountryView = ({
             variant="contained"
             startIcon={<ClearIcon />}
             onClick={() => {
+              clearState()
               setEditState(EditorState.View);
             }}
           >
@@ -291,7 +302,10 @@ const CountryView = ({
             variant="contained"
             startIcon={<SaveIcon />}
             type="submit"
-            onClick={() => handleFullCountrySubmit(countryFormState, "PUT")}
+            onClick={() => {
+              handleFullCountrySubmit(countryFormState, "PUT");
+              setEditState(EditorState.View);
+            }}
           >
             Save
           </Button>
@@ -341,12 +355,10 @@ const CountryView = ({
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={() => {
-              const createdUid = handleFullCountrySubmit(
+              handleFullCountrySubmit(
                 countryFormState,
                 "POST"
-              );
-              // route to created country uid
-              router.push(`/countries/${createdUid}`);
+              ).then((createdUid)=>{router.push(`/countries/${createdUid}`)});
             }}
           >
             Save
@@ -355,9 +367,8 @@ const CountryView = ({
             variant="contained"
             startIcon={<ClearIcon />}
             onClick={() => {
+              clearState()
               setEditState(EditorState.New);
-              setCountryFormState({} as FullCountry);
-              territoriesUpdateEvent([{} as TerritoryProps, "reset"]);
             }}
           >
             Clear
@@ -396,8 +407,7 @@ const CountryView = ({
       <div className="pb-10">
         <h2 className="text-2xl font-bold">{headerText}</h2>
         <List disablePadding>
-          {Object.entries(territoriesState).map((element, index) => {
-            const [uid, territory] = element;
+          {Object.entries(territoriesState).map(([uid, territory], index) => {
             return (
               <div key={uid}>
                 <ListItem disablePadding disableGutters>
@@ -434,15 +444,17 @@ const CountryView = ({
                     onChange={(e: dayjs.Dayjs | null) => {
                       const formattedDate =
                         e?.format(DATE_FORMAT) || territory.date_start;
-                      territoriesUpdateEvent([
-                        {
-                          ...territoriesState[territory.uid],
-                          date_start: formattedDate,
-                        } as TerritoryProps,
-                      ]);
+                      const updatedTerritory = {
+                        ...territory,
+                        date_start: formattedDate,
+                      } as TerritoryProps;
+                      territoriesUpdateEvent([updatedTerritory]);
                       setCountryFormState({
                         ...countryFormState,
-                        territories: Object.values(territoriesState),
+                        territories: Object.values({
+                          ...territoriesState,
+                          [uid]: updatedTerritory,
+                        }),
                       });
                     }}
                   />
@@ -453,15 +465,17 @@ const CountryView = ({
                     onChange={(e: Dayjs | null) => {
                       const formattedDate =
                         e?.format(DATE_FORMAT) || territory.date_end;
-                      territoriesUpdateEvent([
-                        {
-                          ...territoriesState[territory.uid],
-                          date_end: formattedDate,
-                        } as TerritoryProps,
-                      ]);
+                      const updatedTerritory = {
+                        ...territory,
+                        date_end: formattedDate,
+                      } as TerritoryProps;
+                      territoriesUpdateEvent([updatedTerritory]);
                       setCountryFormState({
                         ...countryFormState,
-                        territories: Object.values(territoriesState),
+                        territories: Object.values({
+                          ...territoriesState,
+                          [uid]: updatedTerritory,
+                        }),
                       });
                     }}
                   />
@@ -473,12 +487,19 @@ const CountryView = ({
                       checked={territoriesState[uid].show}
                       tabIndex={-1}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        territoriesUpdateEvent([
-                          {
-                            ...territoriesState[uid],
-                            show: e.target.checked,
-                          } as TerritoryProps,
-                        ]);
+                        const updatedTerritory = {
+                          ...territory,
+                          show: e.target.checked,
+                        } as TerritoryProps;
+
+                        territoriesUpdateEvent([updatedTerritory]);
+                        setCountryFormState({
+                          ...countryFormState,
+                          territories: Object.values({
+                            ...territoriesState,
+                            [uid]: updatedTerritory,
+                          }),
+                        });
                         viewerRef?.current?.cesiumElement?.dataSources
                           .getByName(countryFormState.name_eng)
                           .map((t) => (t.show = !territoriesState[uid].show));
@@ -530,10 +551,7 @@ const CountryView = ({
                     "aria-labelledby": "basic-button",
                   }}
                 >
-                  <MenuItem
-                    component="label"
-                    onClick={() => console.log("close menu")}
-                  >
+                  <MenuItem component="label">
                     Upload new data
                     <input
                       hidden
@@ -620,7 +638,7 @@ const CountryView = ({
           height: "100%",
         }}
       >
-        <ImageryLayer alpha={0.5} imageryProvider={imageryProvider} />
+        <ImageryLayer alpha={1} imageryProvider={imageryProvider} />
         {Object.values(territoriesState).map((territory) => {
           if (!territory.geometry?.coordinates) {
             return undefined;
