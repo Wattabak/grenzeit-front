@@ -1,31 +1,28 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { Cluster } from "@/utils/types";
 import useSWR from "swr";
-import { GeoJsonDataSource, Viewer } from "resium";
-import { Color } from "cesium";
+import { CesiumComponentRef, GeoJsonDataSource, ImageryLayer, Viewer } from "resium";
+import { Color, IonImageryProvider } from "cesium";
+import { singleFetcher } from "@/utils/fetchers";
+import { Viewer as CViewer } from "cesium";
 
 interface ClusterListResponse {
   clusters: Cluster[];
 }
 
-const fetcher = (...args: any) =>
-  fetch(...args)
-    .then((res) => res.json())
-    .catch((e) => console.error(e));
-
-function useClusters() {
-  const { data, error, isLoading } = useSWR<ClusterListResponse, Error>(
+function useClusters(): ClusterListResponse {
+  const { data, error } = useSWR<ClusterListResponse>(
     `/api/grenzeit/geometries/clusters/`,
-    fetcher
+    singleFetcher
   );
 
-  return {
-    clusters: data,
-    error,
-    isLoading,
-  };
+  if (!data) {
+    return { clusters: [] } as ClusterListResponse;
+  }
+
+  return data;
 }
 
 interface ClusterListProps {
@@ -35,10 +32,9 @@ interface ClusterListProps {
 }
 
 export default function Page({ params }: ClusterListProps) {
-  const { clusters, error, isLoading } = useClusters();
+  const clusters = useClusters();
 
-  const viewerRef = useRef();
-
+  const viewerRef = useRef<null | CesiumComponentRef<CViewer>>(null);
   const viewerProps = {
     full: true,
     timeline: false,
@@ -49,12 +45,17 @@ export default function Page({ params }: ClusterListProps) {
     fullscreenButton: false,
     sceneModePicker: false,
     navigationHelpButton: false,
+    resolutionScale: 0.5,
+    imageryProvider: false,
     ref: viewerRef,
   };
+  const imageryProvider = IonImageryProvider.fromAssetId(3954, {});
 
   return (
     <>
       <Viewer {...viewerProps}>
+      <ImageryLayer alpha={1} imageryProvider={imageryProvider} />
+
         <div
           className="text-3xl font-bold"
           style={{

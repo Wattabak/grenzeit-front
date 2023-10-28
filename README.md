@@ -9,10 +9,6 @@ This is a Next.js project (for now mostly a client-side generated one) that is i
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
 ![Grenzeit world map](project_files/Grenzeit_world_map.png)

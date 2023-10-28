@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { FullCountry } from "@/utils/types";
-import useSWR from "swr";
+import React from "react";
+import { EditorState } from "@/utils/types";
 
-import IconButton from "@mui/material/IconButton";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useRouter } from "next/navigation";
 import CountryView from "@/components/CountryView";
+import { useFullCountry } from "@/utils/hooks";
+import { useSchema } from "@/utils/hooks";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import { Link, Typography } from "@mui/material";
 
 interface CountryProps {
   params: {
@@ -15,48 +15,34 @@ interface CountryProps {
   };
 }
 
-const fetcher = (...args: any) =>
-  fetch(...args)
-    .then((res) => res.json())
-    .catch((err) => console.log(err));
-
-function useCountry(countryId: string) {
-  const { data, error, isLoading } = useSWR<FullCountry, Error>(
-    `/api/grenzeit/countries/full/${countryId}`,
-    fetcher
-  );
-  if (isLoading) {return {country: {territories: []}, error, isLoading }}
-  return {
-    country: data,
-    error,
-    isLoading,
-  };
-}
-
-function useSchema(){
-  const { data, error, isLoading } = useSWR<object, Error>(
-    `/api/grenzeit/admin/schema/full_country`,
-    fetcher
-  );
-  if (isLoading) {return {properties: undefined}}
-  return data;
-};
-
 export default function Page({ params }: CountryProps) {
-  const router = useRouter();
-
-  const { country, error, isLoading } = useCountry(params.countryId);
+  const { data: country, error } = useFullCountry(params.countryId);
   const schema = useSchema();
-  return (
-    <div>
-      <IconButton onClick={() => router.push("/countries")}>
-        <ArrowBackIcon />
-      </IconButton>
+  const content = () => {
+    if (error) {
+      return `${error?.status || ""} Not found`;
+    }
+    return (
       <CountryView
-        country={typeof country != "undefined" ? country : { territories: [] }}
-        editorState={"View"}
+        country={country}
+        editorState={EditorState.View}
         schema={schema}
       />
+    );
+  };
+
+  return (
+    <div className="py-10">
+      <div>
+        <Breadcrumbs aria-label="breadcrumb">
+          <Link underline="hover" color="inherit" href="/countries">
+            Countries
+          </Link>
+          <Typography color="text.primary">{country.name_eng}</Typography>
+        </Breadcrumbs>
+      </div>
+
+      {content()}
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body>
+      <body className="m-0">
         <main>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <div className="font-sans">{children}</div>
