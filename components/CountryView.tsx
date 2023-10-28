@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FormEvent, useEffect, useReducer, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import Stack from "@mui/material/Stack";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
@@ -12,7 +12,12 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DataObjectIcon from "@mui/icons-material/DataObject";
-import { Viewer as CViewer } from "cesium";
+import {
+  ArcGisMapServerImageryProvider,
+  Viewer as CViewer,
+  IonImageryProvider,
+  ProviderViewModel,
+} from "cesium";
 import {
   Box,
   Button,
@@ -33,8 +38,13 @@ import {
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import SaveIcon from "@mui/icons-material/Save";
-import { Viewer, GeoJsonDataSource, CesiumComponentRef } from "resium";
-import { Color, EntityCollection } from "cesium";
+import {
+  Viewer,
+  GeoJsonDataSource,
+  CesiumComponentRef,
+  ImageryLayer,
+} from "resium";
+import { Color } from "cesium";
 import dayjs, { Dayjs } from "dayjs";
 import ClearIcon from "@mui/icons-material/Clear";
 import { DatePicker } from "@mui/x-date-pickers";
@@ -80,14 +90,6 @@ const extractType = (schema: SchemaType) => {
   return schema?.type || multipleOptions;
 };
 
-// const handleTerritoryUpload = (e: any) => {
-//   var reader = new FileReader();
-//   reader.onload = (ev: ProgressEvent<FileReader>) => {
-//     setSelectedFile(JSON.parse(ev.target.result));
-//   };
-//   reader.readAsText(e.target.files[0]);
-// };
-
 interface TerritoryProps extends Territory {
   uid: string;
   show: boolean;
@@ -99,9 +101,11 @@ const CountryView = ({
   schema,
   editorState,
 }: CountryViewProps): JSX.Element => {
-  const [editState, setEditState] = useState(
-    editorState || EditorState.View
-  );
+  const [editState, setEditState] = useState(editorState || EditorState.View);
+  const [territoryAnchorEl, setTerritoryAnchorEl] =
+    useState<null | HTMLElement>(null);
+
+  const openTerritoryMenu = Boolean(territoryAnchorEl);
 
   const [countryFormState, setCountryFormState] = useState<FullCountry>(
     {} as FullCountry
@@ -130,6 +134,26 @@ const CountryView = ({
     },
     {}
   );
+  const handleTerritoryUpload = (e: any, territoryId: string) => {
+    let reader = new FileReader();
+    reader.onloadend = (ev: ProgressEvent<FileReader>) => {
+      const uploadedData =
+        typeof reader?.result == "string" ? JSON.parse(reader.result) : {};
+      const updatedTerr = {
+        ...territoriesState[territoryId],
+        geometry: { ...uploadedData?.features[0]?.geometry },
+      };
+      territoriesUpdateEvent([updatedTerr]);
+      setCountryFormState({
+        ...countryFormState,
+        territories: Object.values({
+          ...territoriesState,
+          [territoryId]: updatedTerr,
+        }),
+      });
+    };
+    reader.readAsText(e.target.files[0]);
+  };
   const removeTerritoryElement = (uid: string) => {
     const toRemove = territoriesState[uid];
     toRemove
@@ -143,7 +167,7 @@ const CountryView = ({
       territoriesUpdateEvent([
         {
           ...territory,
-          show: index == 0 ? true : false,
+          show: index == 0,
         } as TerritoryProps,
       ]);
     });
@@ -180,7 +204,7 @@ const CountryView = ({
       method: verb,
       headers: {
         "Content-Type": "application/json",
-        "Content-Length": json_body.length.toString(),
+        // "Content-Length": json_body.length.toString(),
       },
       body: json_body,
     });
@@ -225,9 +249,7 @@ const CountryView = ({
                 label: fieldLabel,
                 variant: "standard",
                 fullWidth: true,
-                required: schema
-                  ? schema.required.includes(propertyName)
-                  : false,
+                required: schema?.required.includes(propertyName),
                 InputProps: {
                   readOnly: editState == EditorState.View,
                 },
@@ -384,7 +406,8 @@ const CountryView = ({
                       {removeElement(uid)}
                       <span>
                         {`${index + 1}. `}
-                        {dayjs(territory?.date_start).format("YYYY") || "Unknown"}
+                        {dayjs(territory?.date_start).format("YYYY") ||
+                          "Unknown"}
                         {" - "}
                         {dayjs(territory?.date_end).format("YYYY") || "Unknown"}
                       </span>
@@ -406,12 +429,11 @@ const CountryView = ({
                 <ListItem className="space-x-2" disablePadding>
                   <DatePicker
                     label="Start"
-                    readOnly={editState == EditorState.Edit ? false : true}
+                    readOnly={editState == EditorState.View}
                     value={dayjs(territory.date_start)}
                     onChange={(e: dayjs.Dayjs | null) => {
-                      const formattedDate = e
-                        ? e.format(DATE_FORMAT)
-                        : territory.date_start;
+                      const formattedDate =
+                        e?.format(DATE_FORMAT) || territory.date_start;
                       territoriesUpdateEvent([
                         {
                           ...territoriesState[territory.uid],
@@ -426,10 +448,11 @@ const CountryView = ({
                   />
                   <DatePicker
                     label="End"
-                    readOnly={editState == EditorState.Edit ? false : true}
+                    readOnly={editState == EditorState.View}
                     value={dayjs(territory.date_end)}
                     onChange={(e: Dayjs | null) => {
-                      const formattedDate = e?.format(DATE_FORMAT) || territory.date_end;
+                      const formattedDate =
+                        e?.format(DATE_FORMAT) || territory.date_end;
                       territoriesUpdateEvent([
                         {
                           ...territoriesState[territory.uid],
@@ -491,9 +514,8 @@ const CountryView = ({
                   </IconButton>
                   <IconButton
                     edge="end"
-                    onClick={() =>
-                      console.log("TODO: smol menu on territories")
-                    }
+                    component={"label"}
+                    onClick={(e) => setTerritoryAnchorEl(e.currentTarget)}
                   >
                     <MoreVertIcon />
                   </IconButton>
@@ -501,21 +523,25 @@ const CountryView = ({
                 <Divider />
                 <Menu
                   id="basic-menu"
-                  anchorEl={null}
-                  open={false}
-                  onClose={() => console.log("close menu")}
+                  anchorEl={territoryAnchorEl}
+                  open={openTerritoryMenu}
+                  onClose={() => setTerritoryAnchorEl(null)}
                   MenuListProps={{
                     "aria-labelledby": "basic-button",
                   }}
                 >
-                  <MenuItem onClick={() => console.log("close menu")}>
-                    Profile
-                  </MenuItem>
-                  <MenuItem onClick={() => console.log("close menu")}>
-                    My account
-                  </MenuItem>
-                  <MenuItem onClick={() => console.log("close menu")}>
-                    Logout
+                  <MenuItem
+                    component="label"
+                    onClick={() => console.log("close menu")}
+                  >
+                    Upload new data
+                    <input
+                      hidden
+                      type="file"
+                      onChange={(e) => {
+                        handleTerritoryUpload(e, territory.uid);
+                      }}
+                    />
                   </MenuItem>
                 </Menu>
               </div>
@@ -549,8 +575,6 @@ const CountryView = ({
                 </ListItemIcon>
               </ListItem>
             );
-          } else {
-            return <></>;
           }
         })()}
       </div>
@@ -575,13 +599,17 @@ const CountryView = ({
       timeline: false,
       animation: false,
       baseLayerPicker: false,
+      imageryProvider: false,
       geocoder: false,
       homeButton: false,
       fullscreenButton: false,
       sceneModePicker: false,
+      resolutionScale: 0.5,
       navigationHelpButton: false,
       ref: viewerRef,
+      // baseLayer: ImageryLayer.fromProviderAsync(IonImageryProvider.fromAssetId(3954, {}), {}),
     };
+    const imageryProvider = IonImageryProvider.fromAssetId(3954, {});
     return (
       <Viewer
         {...viewerProps}
@@ -592,6 +620,7 @@ const CountryView = ({
           height: "100%",
         }}
       >
+        <ImageryLayer alpha={0.5} imageryProvider={imageryProvider} />
         {Object.values(territoriesState).map((territory) => {
           if (!territory.geometry?.coordinates) {
             return undefined;

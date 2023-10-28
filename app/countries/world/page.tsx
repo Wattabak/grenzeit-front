@@ -1,17 +1,22 @@
 "use client";
 
 import React, { useState } from "react";
-import { CesiumComponentRef, GeoJsonDataSource, Viewer } from "resium";
+import {
+  CesiumComponentRef,
+  GeoJsonDataSource,
+  ImageryLayer,
+  Viewer,
+} from "resium";
 import { DatePicker } from "@mui/x-date-pickers";
 import { useRef } from "react";
-import { Color } from "cesium";
-import { Viewer as CViewer} from "cesium";
+import { Color, IonImageryProvider } from "cesium";
+import { Viewer as CViewer } from "cesium";
 import dayjs, { Dayjs } from "dayjs";
 import { useWorldCountries } from "@/utils/hooks";
 
 export default function Page() {
   const [showDate, setShowDate] = useState<Dayjs | null>(dayjs("2000-05-05"));
-  const viewerRef = useRef<null| CesiumComponentRef<CViewer>>(null);
+  const viewerRef = useRef<null | CesiumComponentRef<CViewer>>(null);
   const clusterNames = [
     "Europe",
     "Asia",
@@ -35,6 +40,8 @@ export default function Page() {
     fullscreenButton: false,
     sceneModePicker: false,
     navigationHelpButton: false,
+    resolutionScale: 0.5,
+    imageryProvider: false,
     ref: viewerRef,
   };
 
@@ -45,9 +52,13 @@ export default function Page() {
     // perhaps, I can create a onRemove hook attached to GeoJSONdatasource that would also remove the element from the viewer
     setShowDate(newDate);
   }
+  const imageryProvider = IonImageryProvider.fromAssetId(3954, {});
+
   return (
     <>
       <Viewer {...viewerProps}>
+        <ImageryLayer alpha={0.5} imageryProvider={imageryProvider} />
+
         <div
           style={{
             position: "absolute",

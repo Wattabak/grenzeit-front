@@ -3,8 +3,8 @@
 import React, { useRef } from "react";
 import { Cluster } from "@/utils/types";
 import useSWR from "swr";
-import { CesiumComponentRef, GeoJsonDataSource, Viewer } from "resium";
-import { Color } from "cesium";
+import { CesiumComponentRef, GeoJsonDataSource, ImageryLayer, Viewer } from "resium";
+import { Color, IonImageryProvider } from "cesium";
 import { singleFetcher } from "@/utils/fetchers";
 import { Viewer as CViewer } from "cesium";
 
@@ -45,12 +45,17 @@ export default function Page({ params }: ClusterListProps) {
     fullscreenButton: false,
     sceneModePicker: false,
     navigationHelpButton: false,
+    resolutionScale: 0.5,
+    imageryProvider: false,
     ref: viewerRef,
   };
+  const imageryProvider = IonImageryProvider.fromAssetId(3954, {});
 
   return (
     <>
       <Viewer {...viewerProps}>
+      <ImageryLayer alpha={0.5} imageryProvider={imageryProvider} />
+
         <div
           className="text-3xl font-bold"
           style={{
